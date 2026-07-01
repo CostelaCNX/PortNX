@@ -1,0 +1,57 @@
+{
+    "tabs": {
+        "ports":    "Ports",
+        "queue":    "Queue",
+        "settings": "Settings"
+    },
+    "browse": {
+        "loading":           "Loading...",
+        "no_server":         "No server configured",
+        "no_server_hint":    "Add a server URL in the Settings tab.",
+        "fetch_failed":      "Failed to load",
+        "invalid_index":     "Invalid index",
+        "empty":             "Empty",
+        "no_items":          "No items here.",
+        "back":              "[..] Back",
+        "installed":         "[Installed]",
+        "not_installed":     "[Not installed]",
+        "update":            "[Installed: {0} → Update]",
+        "queued":            "Queued: {0}",
+        "fat32_warn":        "Warning: file >= 4 GB may fail on a FAT32 SD.",
+        "downloading":       "Downloading {0} — check Queue.",
+        "already_dl":        "A download is already running."
+    },
+    "queue": {
+        "installed_hdr":    "Installed ({0}):",
+        "pending_hdr":      "Up next ({0}):",
+        "idle":             "Waiting for a port to install...",
+        "all_done":         "All done.",
+        "dl_done":          "Download complete — saved to SD.",
+        "inst_done":        "Installed successfully.",
+        "failed":           "Failed: {0}",
+        "downloading":      "Downloading...",
+        "installing":       "Installing...",
+        "dl_progress":      "{0}%  {1} / {2}",
+        "dl_bytes":         "{0} downloaded...",
+        "inst_progress":    "{0}%  {1} / {2}",
+        "inst_bytes":       "{0} written..."
+    },
+    "settings": {
+        "server_hdr":       "Server",
+        "server_url":       "Index URL",
+        "not_set":          "(not set)",
+        "install_hdr":      "Install options",
+        "destination":      "Install destination",
+        "sd_card":          "SD Card",
+        "nand":             "NAND (Internal)",
+        "force_reinstall":  "Force reinstall",
+        "on":               "On",
+        "off":              "Off",
+        "lang_hdr":         "Language",
+        "language":         "Language",
+        "lang_system":      "System default",
+        "lang_en":          "English",
+        "lang_ptbr":        "Português (BR)",
+        "lang_restart":     "Restart the app to apply changes."
+    }
+}

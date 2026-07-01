@@ -1,0 +1,168 @@
+#include <install/CryptoUtils.hpp>
+#include <install/NcaStructs.hpp>
+
+#include <cstring>
+
+#include <switch.h>
+#include <mbedtls/bignum.h>
+#include <mbedtls/sha256.h>
+
+namespace pinx::install {
+
+const unsigned char kNcaHeaderSignatureModulus[0x100] = {
+    0xBF, 0xBE, 0x40, 0x6C, 0xF4, 0xA7, 0x80, 0xE9, 0xF0, 0x7D, 0x0C, 0x99, 0x61, 0x1D, 0x77, 0x2F,
+    0x96, 0xBC, 0x4B, 0x9E, 0x58, 0x38, 0x1B, 0x03, 0xAB, 0xB1, 0x75, 0x49, 0x9F, 0x2B, 0x4D, 0x58,
+    0x34, 0xB0, 0x05, 0xA3, 0x75, 0x22, 0xBE, 0x1A, 0x3F, 0x03, 0x73, 0xAC, 0x70, 0x68, 0xD1, 0x16,
+    0xB9, 0x04, 0x46, 0x5E, 0xB7, 0x07, 0x91, 0x2F, 0x07, 0x8B, 0x26, 0xDE, 0xF6, 0x00, 0x07, 0xB2,
+    0xB4, 0x51, 0xF8, 0x0D, 0x0A, 0x5E, 0x58, 0xAD, 0xEB, 0xBC, 0x9A, 0xD6, 0x49, 0xB9, 0x64, 0xEF,
+    0xA7, 0x82, 0xB5, 0xCF, 0x6D, 0x70, 0x13, 0xB0, 0x0F, 0x85, 0xF6, 0xA9, 0x08, 0xAA, 0x4D, 0x67,
+    0x66, 0x87, 0xFA, 0x89, 0xFF, 0x75, 0x90, 0x18, 0x1E, 0x6B, 0x3D, 0xE9, 0x8A, 0x68, 0xC9, 0x26,
+    0x04, 0xD9, 0x80, 0xCE, 0x3F, 0x5E, 0x92, 0xCE, 0x01, 0xFF, 0x06, 0x3B, 0xF2, 0xC1, 0xA9, 0x0C,
+    0xCE, 0x02, 0x6F, 0x16, 0xBC, 0x92, 0x42, 0x0A, 0x41, 0x64, 0xCD, 0x52, 0xB6, 0x34, 0x4D, 0xAE,
+    0xC0, 0x2E, 0xDE, 0xA4, 0xDF, 0x27, 0x68, 0x3C, 0xC1, 0xA0, 0x60, 0xAD, 0x43, 0xF3, 0xFC, 0x86,
+    0xC1, 0x3E, 0x6C, 0x46, 0xF7, 0x7C, 0x29, 0x9F, 0xFA, 0xFD, 0xF0, 0xE3, 0xCE, 0x64, 0xE7, 0x35,
+    0xF2, 0xF6, 0x56, 0x56, 0x6F, 0x6D, 0xF1, 0xE2, 0x42, 0xB0, 0x83, 0x40, 0xA5, 0xC3, 0x20, 0x2B,
+    0xCC, 0x9A, 0xAE, 0xCA, 0xED, 0x4D, 0x70, 0x30, 0xA8, 0x70, 0x1C, 0x70, 0xFD, 0x13, 0x63, 0x29,
+    0x02, 0x79, 0xEA, 0xD2, 0xA7, 0xAF, 0x35, 0x28, 0x32, 0x1C, 0x7B, 0xE6, 0x2F, 0x1A, 0xAA, 0x40,
+    0x7E, 0x32, 0x8C, 0x27, 0x42, 0xFE, 0x82, 0x78, 0xEC, 0x0D, 0xEB, 0xE6, 0x83, 0x4B, 0x6D, 0x81,
+    0x04, 0x40, 0x1A, 0x9E, 0x9A, 0x67, 0xF6, 0x72, 0x29, 0xFA, 0x04, 0xF0, 0x9D, 0xE4, 0xF4, 0x03
+};
+
+const unsigned char kHeaderKekSource[0x10] = {
+    0x1F, 0x12, 0x91, 0x3A, 0x4A, 0xCB, 0xF0, 0x0D,
+    0x4C, 0xDE, 0x3A, 0xF6, 0xD5, 0x23, 0x88, 0x2A
+};
+
+const unsigned char kHeaderKeySource[0x20] = {
+    0x5A, 0x3E, 0xD8, 0x4F, 0xDE, 0xC0, 0xD8, 0x26,
+    0x31, 0xF7, 0xE2, 0x5D, 0x19, 0x7B, 0xF5, 0xD0,
+    0x1C, 0x9B, 0x7B, 0xFA, 0xF6, 0x28, 0x18, 0x3D,
+    0x71, 0xF6, 0x4D, 0x73, 0xF1, 0x50, 0xB9, 0xD2
+};
+
+bool DeriveHeaderKey(HeaderKey &out) {
+    u8 kek[0x10] = {};
+
+    Result rc = splCryptoGenerateAesKek(kHeaderKekSource, 0, 0, kek);
+    if(R_FAILED(rc)) {
+        return false;
+    }
+
+    rc = splCryptoGenerateAesKey(kek, kHeaderKeySource, out.key);
+    if(R_FAILED(rc)) {
+        return false;
+    }
+
+    rc = splCryptoGenerateAesKey(kek, kHeaderKeySource + 0x10, out.key + 0x10);
+    return R_SUCCEEDED(rc);
+}
+
+void DecryptNcaHeader(void *header, std::size_t length, const HeaderKey &key) {
+    Aes128XtsContext ctx;
+    aes128XtsContextCreate(&ctx, key.key, key.key + 0x10, false);
+
+    auto *bytes = static_cast<std::uint8_t *>(header);
+    const std::size_t sector_count = length / kNcaSectorSize;
+    for(std::size_t sector = 0; sector < sector_count; sector++) {
+        aes128XtsContextResetSector(&ctx, sector, true);
+        aes128XtsDecrypt(&ctx, bytes + sector * kNcaSectorSize,
+                         bytes + sector * kNcaSectorSize, kNcaSectorSize);
+    }
+}
+
+void EncryptNcaHeader(void *header, std::size_t length, const HeaderKey &key) {
+    Aes128XtsContext ctx;
+    aes128XtsContextCreate(&ctx, key.key, key.key + 0x10, true);
+
+    auto *bytes = static_cast<std::uint8_t *>(header);
+    const std::size_t sector_count = length / kNcaSectorSize;
+    for(std::size_t sector = 0; sector < sector_count; sector++) {
+        aes128XtsContextResetSector(&ctx, sector, true);
+        aes128XtsEncrypt(&ctx, bytes + sector * kNcaSectorSize,
+                         bytes + sector * kNcaSectorSize, kNcaSectorSize);
+    }
+}
+
+namespace {
+
+void CalculateMgf1AndXor(unsigned char *data, std::size_t data_size,
+                         const void *source, std::size_t source_size) {
+    unsigned char h_buf[0x100] = {};
+    std::memcpy(h_buf, source, source_size);
+
+    unsigned char mgf1_buf[0x20];
+    std::size_t ofs = 0;
+    unsigned int seed = 0;
+
+    while(ofs < data_size) {
+        for(unsigned int i = 0; i < sizeof(seed); i++) {
+            h_buf[source_size + 3 - i] = static_cast<unsigned char>((seed >> (8 * i)) & 0xFF);
+        }
+        sha256CalculateHash(mgf1_buf, h_buf, source_size + 4);
+
+        for(std::size_t i = ofs; (i < data_size) && (i < ofs + 0x20); i++) {
+            data[i] ^= mgf1_buf[i - ofs];
+        }
+        seed++;
+        ofs += 0x20;
+    }
+}
+
+}
+
+bool Rsa2048PssVerify(const void *data, std::size_t len,
+                      const unsigned char *signature,
+                      const unsigned char *modulus) {
+    constexpr std::size_t kRsa2048Bytes = 0x100;
+
+    mbedtls_mpi sig_mpi, mod_mpi, e_mpi, msg_mpi;
+    mbedtls_mpi_init(&sig_mpi);
+    mbedtls_mpi_init(&mod_mpi);
+    mbedtls_mpi_init(&e_mpi);
+    mbedtls_mpi_init(&msg_mpi);
+
+    const unsigned char exponent[3] = { 1, 0, 1 };
+    mbedtls_mpi_read_binary(&e_mpi, exponent, 3);
+    mbedtls_mpi_read_binary(&sig_mpi, signature, kRsa2048Bytes);
+    mbedtls_mpi_read_binary(&mod_mpi, modulus, kRsa2048Bytes);
+
+    unsigned char m_buf[kRsa2048Bytes];
+    bool ok = false;
+
+    if(mbedtls_mpi_exp_mod(&msg_mpi, &sig_mpi, &e_mpi, &mod_mpi, nullptr) == 0) {
+        if(mbedtls_mpi_write_binary(&msg_mpi, m_buf, kRsa2048Bytes) == 0) {
+            if(m_buf[kRsa2048Bytes - 1] == 0xBC) {
+                unsigned char h_buf[0x24] = {};
+                std::memcpy(h_buf, m_buf + kRsa2048Bytes - 0x20 - 0x1, 0x20);
+
+                CalculateMgf1AndXor(m_buf, kRsa2048Bytes - 0x20 - 1, h_buf, 0x20);
+                m_buf[0] &= 0x7F;
+
+                bool db_ok = true;
+                for(std::size_t i = 0; i < kRsa2048Bytes - 0x20 - 0x20 - 1 - 1; i++) {
+                    if(m_buf[i] != 0) { db_ok = false; break; }
+                }
+                if(db_ok && (m_buf[kRsa2048Bytes - 0x20 - 0x20 - 1 - 1] == 1)) {
+                    unsigned char validate_buf[8 + 0x20 + 0x20] = {};
+                    unsigned char validate_hash[0x20];
+
+                    sha256CalculateHash(validate_buf + 8, data, len);
+                    std::memcpy(validate_buf + 0x28,
+                                m_buf + kRsa2048Bytes - 0x20 - 0x20 - 1, 0x20);
+                    sha256CalculateHash(validate_hash, validate_buf, sizeof(validate_buf));
+
+                    ok = (std::memcmp(h_buf, validate_hash, 0x20) == 0);
+                }
+            }
+        }
+    }
+
+    mbedtls_mpi_free(&sig_mpi);
+    mbedtls_mpi_free(&mod_mpi);
+    mbedtls_mpi_free(&e_mpi);
+    mbedtls_mpi_free(&msg_mpi);
+
+    return ok;
+}
+
+}

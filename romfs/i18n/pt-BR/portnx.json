@@ -1,0 +1,57 @@
+{
+    "tabs": {
+        "ports":    "Ports",
+        "queue":    "Fila",
+        "settings": "Configurações"
+    },
+    "browse": {
+        "loading":           "Carregando...",
+        "no_server":         "Servidor não configurado",
+        "no_server_hint":    "Adicione uma URL de servidor nas Configurações.",
+        "fetch_failed":      "Falha ao carregar",
+        "invalid_index":     "Índice inválido",
+        "empty":             "Vazio",
+        "no_items":          "Nenhum item aqui.",
+        "back":              "[..] Voltar",
+        "installed":         "[Instalado]",
+        "not_installed":     "[Não instalado]",
+        "update":            "[Instalado: {0} → Atualizar]",
+        "queued":            "Na fila: {0}",
+        "fat32_warn":        "Aviso: arquivo >= 4 GB pode falhar em SD FAT32.",
+        "downloading":       "Baixando {0} — veja a Fila.",
+        "already_dl":        "Já há um download em andamento."
+    },
+    "queue": {
+        "installed_hdr":    "Instalados ({0}):",
+        "pending_hdr":      "Próximos ({0}):",
+        "idle":             "Aguardando um port para instalar...",
+        "all_done":         "Tudo pronto.",
+        "dl_done":          "Download concluído — salvo no SD.",
+        "inst_done":        "Instalado com sucesso.",
+        "failed":           "Falhou: {0}",
+        "downloading":      "Baixando...",
+        "installing":       "Instalando...",
+        "dl_progress":      "{0}%  {1} / {2}",
+        "dl_bytes":         "{0} baixados...",
+        "inst_progress":    "{0}%  {1} / {2}",
+        "inst_bytes":       "{0} gravados..."
+    },
+    "settings": {
+        "server_hdr":       "Servidor",
+        "server_url":       "URL do índice",
+        "not_set":          "(não definido)",
+        "install_hdr":      "Opções de instalação",
+        "destination":      "Destino de instalação",
+        "sd_card":          "Cartão SD",
+        "nand":             "NAND (Interna)",
+        "force_reinstall":  "Forçar reinstalação",
+        "on":               "Ativado",
+        "off":              "Desativado",
+        "lang_hdr":         "Idioma",
+        "language":         "Idioma",
+        "lang_system":      "Padrão do sistema",
+        "lang_en":          "English",
+        "lang_ptbr":        "Português (BR)",
+        "lang_restart":     "Reinicie o app para aplicar."
+    }
+}
