@@ -28,7 +28,8 @@ APP_ICON    := $(CURDIR)/icon.jpg
 BUILD       := build
 SOURCES     := source source/net source/catalog source/app source/ui source/download source/install
 INCLUDES    := include
-ROMFS       := romfs
+ROMFS_SRC   := romfs
+ROMFS       := build/romfs
 
 BOREALIS_PATH      := lib/borealis
 BOREALIS_RESOURCES := romfs:/
@@ -106,18 +107,20 @@ ifneq ($(ROMFS),)
 	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: $(BUILD) $(ROMFS) clean all
+.PHONY: $(BUILD) $(ROMFS) clean all release
 
 all: $(BUILD)
 
 #---------------------------------------------------------------------------------
-# ROMFS: populate with borealis runtime resources (fonts, i18n, icons)
+# ROMFS: merge borealis runtime resources + project assets into build/romfs/
 #---------------------------------------------------------------------------------
 $(ROMFS):
 	@[ -d $@ ] || mkdir -p $@
 	@echo Merging borealis resources into ROMFS...
 	@cp -ruf $(CURDIR)/$(BOREALIS_PATH)/resources/. $(CURDIR)/$(ROMFS)/
+	@cp -ruf $(CURDIR)/$(ROMFS_SRC)/. $(CURDIR)/$(ROMFS)/
 	@cp -f $(CURDIR)/icon.jpg $(CURDIR)/$(ROMFS)/icon/borealis.jpg
+	@rm -f $(CURDIR)/$(TARGET).nro
 
 $(BUILD): $(ROMFS)
 	@[ -d $@ ] || mkdir -p $@
@@ -126,7 +129,7 @@ $(BUILD): $(ROMFS)
 
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf $(ROMFS)
+	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf
 
 release: $(TARGET).nro
 	@echo Creating release archive ...
