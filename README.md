@@ -2,23 +2,25 @@
 
 Nintendo Switch homebrew for installing ports from a remote server catalog.
 
-Ports are NSP/NSZ/XCI/XCZ files served via a Tinfoil-compatible JSON index.  
+Ports are NSP/NSZ/XCI/XCZ files served via a JSON index.  
 Files are streamed directly to the SD card or NAND without intermediate storage.
 
 ## Features
 
-- Browse a remote port catalog over HTTP/HTTPS (Tinfoil index format, encrypted or plain)
+- Home screen with three-card navigation (Browse, Queue, Settings)
+- Browse a remote port catalog over HTTP/HTTPS (encrypted or plain JSON index)
+- 3×2 port grid with icon preview, L/R pagination, and touch support
 - Stream-install NSZ via NCM + ES
-- Install queue with per-item progress and session history
-- Marks installed ports in the browse list (NCM check + session fallback for unnamed titles)
+- Install queue with per-item progress, cancel (Y button), and session history
+- Marks installed ports in the browse list (NCM check + session fallback)
 - Language: English / Português (BR) — switchable in Settings
-- Visual style inspired by SwitchU (glass cards, navy gradient background)
+- Analog stick (L + R) and touch navigation throughout
 
 ## Requirements
 
 - Nintendo Switch running Atmosphere CFW
 - `prod.keys` accessible to the homebrew (required for NSZ/XCZ decryption via NCM)
-- A server hosting a Tinfoil-compatible `index.json`
+- A server hosting a compatible `index.json`
 
 ## Usage
 
@@ -32,7 +34,7 @@ Icons are cached to `sdmc:/switch/PortNX/icons/`.
 
 ## Building
 
-Requires devkitPro with `devkitA64`, `libnx`, and the Switch portlibs.
+Requires devkitPro with `devkitA64`, `libnx`, the Switch portlibs, and [Plutonium](https://github.com/XorTroll/Plutonium) built under `lib/plutonium/`.
 
 ```sh
 make -j$(nproc)
@@ -42,7 +44,7 @@ Output: `PortNX.nro`
 
 ## Catalog format
 
-Standard Tinfoil JSON index. The app also accepts encrypted indexes (TINFOIL magic header).  
+Standard JSON index with a `files` array. The app also accepts encrypted indexes (custom magic header).  
 To create encrypted indexes compatible with PortNX, see [`tools/`](tools/README.md).
 
 Example minimal index:
@@ -67,7 +69,7 @@ GNU General Public License v3.0 — see [LICENSE](LICENSE).
 | Library | License |
 |---------|---------|
 | [libnx](https://github.com/switchbrew/libnx) | ISC |
-| [Borealis](https://github.com/natinusala/borealis) | GPLv3 |
+| [Plutonium](https://github.com/XorTroll/Plutonium) | GPLv3 |
 | [mbedTLS](https://github.com/Mbed-TLS/mbedtls) | Apache 2.0 |
 | [libcurl](https://curl.se/libcurl/) | curl (MIT-like) |
 | [nlohmann/json](https://github.com/nlohmann/json) | MIT |
