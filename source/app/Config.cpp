@@ -37,6 +37,7 @@ Config Config::Load() {
             c.language = j["language"].get<std::string>();
     }
     catch(...) {}
+    if(c.language.empty()) c.language = "pt-BR";
     return c;
 }
 

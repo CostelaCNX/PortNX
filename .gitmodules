@@ -1,0 +1,3 @@
+[submodule "lib/plutonium"]
+	path = lib/plutonium
+	url = https://github.com/XorTroll/Plutonium

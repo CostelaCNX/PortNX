@@ -6,9 +6,10 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
-#include <borealis.hpp>
+#include <pu/Plutonium>
 #include <switch.h>
 
 #include <app/Config.hpp>
@@ -18,15 +19,22 @@
 
 namespace pinx::ui {
 
-class BrowseTab : public brls::List {
+class BrowseTab {
     public:
         BrowseTab(pinx::app::Config *config,
                   pinx::download::DownloadManager *downloader,
                   pinx::install::InstallManager   *installer);
-        ~BrowseTab() override;
+        ~BrowseTab();
 
+        void AddElementsTo(pu::ui::Layout *layout);
+        void Show();
+        void Hide();
+        void Poll();
         void reload();
-        void frame(brls::FrameContext *ctx) override;
+
+        bool HandleInput(u64 kd);
+        void TouchCell(s32 slot);
+        void RefreshStrings();
 
         // Public so free thread functions in the .cpp can reference them.
         struct IconResult {
@@ -49,24 +57,69 @@ class BrowseTab : public brls::List {
             std::string            error;
         };
 
+        // Grid entry — one item in the catalog
+        struct GridEntry {
+            std::string name, url, icon_url, filename, format, version, sha256;
+            std::uint64_t size = 0, title_id = 0;
+            bool size_authoritative = false;
+            bool is_installable = false;
+            bool is_directory   = false;
+            bool is_back        = false;
+            std::string meta_line;
+            pu::sdl2::TextureHandle::Ref icon_tex; // null until loaded
+        };
+
     private:
         pinx::app::Config               *config;
         pinx::download::DownloadManager *downloader;
         pinx::install::InstallManager   *installer;
         std::vector<std::string>         nav_stack;
+        bool                             visible_ = false;
 
-        // Deferred initial load — startFetch() is called on the first frame()
-        // so threads start inside Application::mainLoop(), not the constructor.
         bool pending_initial_load_ = false;
 
-        // Reload whenever a new install completes (tracks the completions counter).
         std::uint32_t            last_completions_ = 0;
-        // URLs installed this session — used to badge ports without title_id.
         std::vector<std::string> session_installed_urls_;
+
+        // Grid data — 3x2, cells wide enough to show full port names
+        static constexpr s32 kGridCols = 3;
+        static constexpr s32 kGridRows = 2;
+        static constexpr s32 kPageSize = kGridCols * kGridRows; // 6
+        static constexpr s32 kCellW    = 560;
+        static constexpr s32 kCellH    = 420;
+        static constexpr s32 kIconSz   = 256;
+        static constexpr s32 kGridX    = 120; // (1920-3*560)/2 = 120
+        static constexpr s32 kGridY    = 130; // below 100px topbar
+
+        std::vector<GridEntry>          entries_;
+        s32                             grid_page_ = 0;
+        s32                             grid_sel_  = 0;
+        bool                            is_loading_ = false;
+        std::unordered_set<std::string> queued_urls_;
+
+        // Per-cell UI elements (kPageSize = 6 cells)
+        std::array<pu::ui::elm::Rectangle::Ref, kPageSize> cell_bg_;
+        std::array<pu::ui::elm::Image::Ref,     kPageSize> cell_img_;
+        std::array<pu::ui::elm::TextBlock::Ref, kPageSize> cell_lbl_;
+        std::array<pu::ui::elm::TextBlock::Ref, kPageSize> cell_meta_;
+
+        // Status / page info
+        pu::ui::elm::TextBlock::Ref status_tb_;
+        pu::ui::elm::TextBlock::Ref page_tb_;
+        pu::ui::elm::TextBlock::Ref browse_hint_tb_;
+
+        // Toast notification (green, expires after ~3s)
+        pu::ui::elm::Rectangle::Ref toast_bg_;
+        pu::ui::elm::TextBlock::Ref toast_tb_;
+        s32                         toast_countdown_ = 0;
+        void ShowToast(const std::string &name);
+
+        void UpdateGridCells();
+        void ActivateSelected();
 
         void startFetch(const std::string &url, bool push);
         void tickFetch();
-        void showMessage(const std::string &title, const std::string &sub);
+        void showMessage(const std::string &msg);
 
         // --- Async catalog fetch ---
         std::shared_ptr<CatalogFetch>    pending_fetch_;
@@ -76,10 +129,10 @@ class BrowseTab : public brls::List {
         bool                             fetch_thread_running_ = false;
 
         // --- Async icon loading ---
-        std::shared_ptr<IconState>                        icon_state_;
-        std::unordered_map<std::string, brls::ListItem *> icon_items_;
-        pinx::net::HttpOptions                            icon_pending_opts_;
-        bool                                              icon_pending_schedule_ = false;
+        std::shared_ptr<IconState>                      icon_state_;
+        std::unordered_map<std::string, std::size_t>   icon_items_; // url -> entry index
+        pinx::net::HttpOptions                          icon_pending_opts_;
+        bool                                            icon_pending_schedule_ = false;
 
         static constexpr std::size_t     kIconStackSize = 4 * 1024 * 1024;
         Thread                           icon_thread_{};
@@ -90,4 +143,4 @@ class BrowseTab : public brls::List {
         void tickIcons();
 };
 
-}
+} // namespace pinx::ui

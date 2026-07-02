@@ -1,10 +1,8 @@
 #include <ui/QueueTab.hpp>
+#include <app/I18n.hpp>
 
 #include <algorithm>
 #include <cstdio>
-
-#include <borealis/i18n.hpp>
-using namespace brls::i18n::literals;
 
 namespace pinx::ui {
 
@@ -12,6 +10,16 @@ namespace {
 
 using DState = pinx::download::DownloadManager::State;
 using IState = pinx::install::InstallManager::State;
+
+static constexpr s32 kCX = 60;
+static constexpr s32 kCY = 100;
+static constexpr s32 kCW = 1800;
+
+static constexpr pu::ui::Color kTextPrimary = { 230, 237, 243, 255 };
+static constexpr pu::ui::Color kTextMuted   = { 139, 148, 158, 255 };
+static constexpr pu::ui::Color kAccent      = {  31, 111, 235, 255 };
+static constexpr pu::ui::Color kSuccess     = {  63, 185, 80,  255 };
+static constexpr pu::ui::Color kError       = { 248,  81,  73, 255 };
 
 std::string HumanSize(std::uint64_t bytes) {
     const char *units[] = {"B", "KB", "MB", "GB"};
@@ -25,38 +33,60 @@ std::string HumanSize(std::uint64_t bytes) {
     return buf;
 }
 
-void drawGlassCard(NVGcontext *vg, float /*cx*/, float card_x, float card_y,
-                   float card_w, float card_h, float radius = 20.0f) {
-    NVGpaint bg = nvgLinearGradient(vg, card_x, card_y, card_x, card_y + card_h,
-        nvgRGBA(41, 38, 65, 210), nvgRGBA(25, 22, 45, 225));
-    nvgBeginPath(vg);
-    nvgRoundedRect(vg, card_x, card_y, card_w, card_h, radius);
-    nvgFillPaint(vg, bg);
-    nvgFill(vg);
-
-    NVGpaint sheen = nvgLinearGradient(vg, card_x, card_y, card_x, card_y + card_h * 0.5f,
-        nvgRGBA(255, 255, 255, 26), nvgRGBA(255, 255, 255, 0));
-    nvgBeginPath(vg);
-    nvgRoundedRect(vg, card_x, card_y, card_w, card_h * 0.5f, radius);
-    nvgFillPaint(vg, sheen);
-    nvgFill(vg);
-
-    nvgBeginPath(vg);
-    nvgRoundedRect(vg, card_x + 0.5f, card_y + 0.5f, card_w - 1.0f, card_h - 1.0f, radius - 0.5f);
-    nvgStrokeColor(vg, nvgRGBA(140, 140, 160, 50));
-    nvgStrokeWidth(vg, 1.0f);
-    nvgStroke(vg);
-}
-
 } // namespace
 
 QueueTab::QueueTab(pinx::download::DownloadManager *dl,
                    pinx::install::InstallManager   *inst)
-    : brls::View(), downloader_(dl), installer_(inst) {
-    status_text_ = "portnx/queue/idle"_i18n;
+    : downloader_(dl), installer_(inst) {}
+
+void QueueTab::AddElementsTo(pu::ui::Layout *layout) {
+    completed_text_ = pu::ui::elm::TextBlock::New(kCX + 30, kCY + 36, "");
+    completed_text_->SetColor(kSuccess);
+    completed_text_->SetFont(pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Small));
+    layout->Add(completed_text_);
+
+    display_name_text_ = pu::ui::elm::TextBlock::New(kCX + 30, kCY + 300, "");
+    display_name_text_->SetColor(kTextPrimary);
+    display_name_text_->SetFont(pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Large));
+    layout->Add(display_name_text_);
+
+    progress_bar_ = pu::ui::elm::ProgressBar::New(kCX + 60, kCY + 405, kCW - 120, 36, 1.0);
+    progress_bar_->SetProgressColor(kAccent);
+    layout->Add(progress_bar_);
+
+    status_text_elm_ = pu::ui::elm::TextBlock::New(kCX + 30, kCY + 474,
+                                                     pinx::i18n::tr("queue.idle"));
+    status_text_elm_->SetColor(kTextMuted);
+    status_text_elm_->SetFont(pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Medium));
+    layout->Add(status_text_elm_);
+
+    queue_text_ = pu::ui::elm::TextBlock::New(kCX + 30, kCY + 630, "");
+    queue_text_->SetColor(kTextMuted);
+    queue_text_->SetFont(pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Small));
+    layout->Add(queue_text_);
+
+    Hide();
 }
 
-void QueueTab::frame(brls::FrameContext *ctx) {
+void QueueTab::Show() {
+    visible_ = true;
+    completed_text_->SetVisible(true);
+    display_name_text_->SetVisible(true);
+    progress_bar_->SetVisible(true);
+    status_text_elm_->SetVisible(true);
+    queue_text_->SetVisible(true);
+}
+
+void QueueTab::Hide() {
+    visible_ = false;
+    completed_text_->SetVisible(false);
+    display_name_text_->SetVisible(false);
+    progress_bar_->SetVisible(false);
+    status_text_elm_->SetVisible(false);
+    queue_text_->SetVisible(false);
+}
+
+void QueueTab::Poll() {
     const auto dl   = downloader_->snapshot();
     const auto inst = installer_->snapshot();
 
@@ -82,183 +112,117 @@ void QueueTab::frame(brls::FrameContext *ctx) {
             display_name_ = "";
             progress_     = 0.0f;
             status_text_  = completed_names_.empty()
-                ? "portnx/queue/idle"_i18n
-                : "portnx/queue/all_done"_i18n;
+                ? pinx::i18n::tr("queue.idle")
+                : pinx::i18n::tr("queue.all_done");
             break;
 
         case Phase::Downloading:
-            display_name_ = dl.name.empty() ? "portnx/queue/downloading"_i18n : dl.name;
+            display_name_ = dl.name.empty() ? pinx::i18n::tr("queue.downloading") : dl.name;
             if(dl.total > 0) {
                 progress_ = static_cast<float>(dl.done) / static_cast<float>(dl.total);
-                status_text_ = brls::i18n::getStr("portnx/queue/dl_progress",
+                char buf[64];
+                std::snprintf(buf, sizeof(buf), "%d%%  %s / %s",
                     static_cast<int>(progress_ * 100.f),
-                    HumanSize(dl.done), HumanSize(dl.total));
+                    HumanSize(dl.done).c_str(), HumanSize(dl.total).c_str());
+                status_text_ = buf;
             } else {
                 progress_    = 0.0f;
-                status_text_ = brls::i18n::getStr("portnx/queue/dl_bytes", HumanSize(dl.done));
+                status_text_ = HumanSize(dl.done);
             }
             break;
 
         case Phase::Installing:
-            display_name_ = inst.display_name.empty() ? "portnx/queue/installing"_i18n : inst.display_name;
+            display_name_ = inst.display_name.empty() ? pinx::i18n::tr("queue.installing") : inst.display_name;
             if(inst.bytes_total > 0) {
                 progress_ = static_cast<float>(inst.bytes_done) /
                             static_cast<float>(inst.bytes_total);
-                status_text_ = brls::i18n::getStr("portnx/queue/inst_progress",
+                char buf[64];
+                std::snprintf(buf, sizeof(buf), "%d%%  %s / %s",
                     static_cast<int>(progress_ * 100.f),
-                    HumanSize(inst.bytes_done), HumanSize(inst.bytes_total));
+                    HumanSize(inst.bytes_done).c_str(), HumanSize(inst.bytes_total).c_str());
+                status_text_ = buf;
             } else {
                 progress_    = 0.0f;
-                status_text_ = brls::i18n::getStr("portnx/queue/inst_bytes",
-                    HumanSize(inst.bytes_done));
+                status_text_ = HumanSize(inst.bytes_done);
             }
             break;
 
         case Phase::Done:
             progress_ = 1.0f;
             if(dl.state == DState::Done && inst.state != IState::Done)
-                status_text_ = "portnx/queue/dl_done"_i18n;
+                status_text_ = pinx::i18n::tr("queue.dl_done");
             else {
-                status_text_ = "portnx/queue/inst_done"_i18n;
+                status_text_ = pinx::i18n::tr("queue.inst_done");
                 if(!inst.display_name.empty()) display_name_ = inst.display_name;
             }
             break;
 
         case Phase::Failed:
             progress_    = 0.0f;
-            status_text_ = brls::i18n::getStr("portnx/queue/failed",
-                inst.error.empty() ? dl.error : inst.error);
+            status_text_ = pinx::i18n::tr("queue.failed") + (inst.error.empty() ? dl.error : inst.error);
             break;
     }
 
-    brls::View::frame(ctx);
+    if(visible_) UpdateElements();
 }
 
-void QueueTab::draw(NVGcontext *vg, int x, int y, unsigned w, unsigned h,
-                    brls::Style *style, brls::FrameContext *ctx) {
-    const float fx    = static_cast<float>(x);
-    const float fy    = static_cast<float>(y);
-    const float fw    = static_cast<float>(w);
-    const float fh    = static_cast<float>(h);
-    const float cx    = fx + fw * 0.5f;
-    const float pad_x = fw * 0.08f;
-    const float card_w = fw - 2.0f * pad_x;
-    const float gap    = 16.0f;
-    const float line_h = 26.0f;
-    const float bar_h  = 14.0f;
-
-    nvgSave(vg);
-    nvgFontFaceId(vg, ctx->fontStash->regular);
-    nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-
-    const float small_fs = static_cast<float>(style->Label.smallFontSize);
-    const float med_fs   = static_cast<float>(style->Label.mediumFontSize);
-
-    const std::size_t n_done = completed_names_.size();
-    const std::size_t show   = n_done > 5 ? 5 : n_done;
-    const float inst_h       = n_done > 0
-        ? (20.0f + line_h + static_cast<float>(show) * line_h + 16.0f)
-        : 0.0f;
-
-    const float act_h  = 20.0f + 28.0f + 24.0f + bar_h + 24.0f + med_fs + 20.0f;
-
-    const std::size_t n_pend  = queue_names_.size();
-    const std::size_t show_p  = n_pend > 5 ? 5 : n_pend;
-    const float pend_h        = n_pend > 0
-        ? (16.0f + line_h + static_cast<float>(show_p) * line_h + 16.0f)
-        : 0.0f;
-
-    const float total_h  = inst_h + (inst_h > 0 ? gap : 0) + act_h
-                         + (pend_h > 0 ? gap : 0) + pend_h;
-    float cur_y = fy + (fh - total_h) * 0.4f;
-    if(cur_y < fy + 16.0f) cur_y = fy + 16.0f;
-
-    const float card_x = fx + pad_x;
-
-    if(n_done > 0) {
-        drawGlassCard(vg, cx, card_x, cur_y, card_w, inst_h);
-
-        float ty = cur_y + 20.0f + line_h * 0.5f;
-        nvgFontSize(vg, small_fs);
-        nvgFillColor(vg, a(ctx->theme->listItemValueColor));
-
-        const std::string hdr_str = brls::i18n::getStr("portnx/queue/installed_hdr", n_done);
-        nvgText(vg, cx, ty, hdr_str.c_str(), nullptr);
-        ty += line_h;
-
-        const std::size_t from = n_done > 5 ? n_done - 5 : 0;
-        for(std::size_t i = from; i < n_done; ++i) {
-            const std::string lbl = "✓ " + completed_names_[i];
-            nvgText(vg, cx, ty, lbl.c_str(), nullptr);
-            ty += line_h;
-        }
-
-        cur_y += inst_h + gap;
-    }
-
-    drawGlassCard(vg, cx, card_x, cur_y, card_w, act_h);
+void QueueTab::UpdateElements() {
+    // Completed installs
     {
-        float ty = cur_y + 20.0f;
-
-        nvgFontSize(vg, 28.0f);
-        nvgFillColor(vg, a(ctx->theme->textColor));
-
-        const std::string idle_str = n_done > 0 ? "portnx/queue/all_done"_i18n
-                                                 : "portnx/queue/idle"_i18n;
-        const char *name_str = display_name_.empty() ? idle_str.c_str() : display_name_.c_str();
-        nvgText(vg, cx, ty + 14.0f, name_str, nullptr);
-        ty += 28.0f + 24.0f;
-
-        if(phase_ == Phase::Downloading || phase_ == Phase::Installing ||
-           phase_ == Phase::Done) {
-            const float bar_x = card_x + pad_x;
-            const float bw    = card_w - 2.0f * pad_x;
-            const float bar_y = ty + bar_h * 0.5f;
-
-            nvgBeginPath(vg);
-            nvgMoveTo(vg, bar_x, bar_y);
-            nvgLineTo(vg, bar_x + bw, bar_y);
-            nvgStrokeColor(vg, nvgRGBA(255, 255, 255, 40));
-            nvgStrokeWidth(vg, bar_h);
-            nvgLineCap(vg, NVG_ROUND);
-            nvgStroke(vg);
-
-            if(progress_ > 0.001f) {
-                nvgBeginPath(vg);
-                nvgMoveTo(vg, bar_x, bar_y);
-                nvgLineTo(vg, bar_x + bw * progress_, bar_y);
-                nvgStrokeColor(vg, a(ctx->theme->listItemValueColor));
-                nvgStrokeWidth(vg, bar_h);
-                nvgLineCap(vg, NVG_ROUND);
-                nvgStroke(vg);
-            }
+        std::string text;
+        const std::size_t n = completed_names_.size();
+        if(n > 0) {
+            char hdr[64];
+            const std::string hdr_s = pinx::i18n::trf("queue.installed_hdr", {std::to_string(n)});
+            std::snprintf(hdr, sizeof(hdr), "%s", hdr_s.c_str());
+            text = hdr;
+            const std::size_t from = n > 5 ? n - 5 : 0;
+            for(std::size_t i = from; i < n; ++i)
+                text += "  ✓ " + completed_names_[i];
         }
-        ty += bar_h + 24.0f;
-
-        nvgFontSize(vg, med_fs);
-        nvgFillColor(vg, a(ctx->theme->descriptionColor));
-        nvgText(vg, cx, ty + med_fs * 0.5f, status_text_.c_str(), nullptr);
-    }
-    cur_y += act_h + gap;
-
-    if(n_pend > 0) {
-        drawGlassCard(vg, cx, card_x, cur_y, card_w, pend_h);
-
-        float ty = cur_y + 16.0f + line_h * 0.5f;
-        nvgFontSize(vg, small_fs);
-        nvgFillColor(vg, a(ctx->theme->descriptionColor));
-
-        const std::string qhdr_str = brls::i18n::getStr("portnx/queue/pending_hdr", n_pend);
-        nvgText(vg, cx, ty, qhdr_str.c_str(), nullptr);
-        ty += line_h;
-
-        for(std::size_t i = 0; i < show_p; ++i) {
-            nvgText(vg, cx, ty, queue_names_[i].c_str(), nullptr);
-            ty += line_h;
-        }
+        SetText(completed_text_, text);
     }
 
-    nvgRestore(vg);
+    // Current job
+    SetText(display_name_text_, display_name_);
+
+    // Progress bar
+    progress_bar_->SetProgress(static_cast<double>(progress_));
+
+    // Status text color (changes rarely; SetColor re-renders texture so track manually)
+    {
+        const pu::ui::Color clr = (phase_ == Phase::Done)   ? kSuccess :
+                                   (phase_ == Phase::Failed) ? kError   : kTextMuted;
+        const auto cur = status_text_elm_->GetColor();
+        if(cur.r != clr.r || cur.g != clr.g || cur.b != clr.b || cur.a != clr.a)
+            status_text_elm_->SetColor(clr);
+    }
+    SetText(status_text_elm_, status_text_);
+
+    // Pending queue
+    {
+        std::string text;
+        const std::size_t n = queue_names_.size();
+        if(n > 0) {
+            char hdr[64];
+            const std::string hdr_s2 = pinx::i18n::trf("queue.pending_hdr", {std::to_string(n)});
+            std::snprintf(hdr, sizeof(hdr), "%s", hdr_s2.c_str());
+            text = hdr;
+            const std::size_t show = n > 5 ? 5 : n;
+            for(std::size_t i = 0; i < show; ++i)
+                text += "  " + queue_names_[i];
+        }
+        SetText(queue_text_, text);
+    }
+}
+
+void QueueTab::RefreshStrings() {
+    if (status_text_elm_ && phase_ == Phase::Idle)
+        SetText(status_text_elm_, pinx::i18n::tr("queue.idle"));
+}
+
+void QueueTab::SetText(pu::ui::elm::TextBlock::Ref &tb, const std::string &text) {
+    if(tb->GetText() != text) tb->SetText(text);
 }
 
 } // namespace pinx::ui

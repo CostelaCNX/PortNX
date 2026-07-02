@@ -1,25 +1,10 @@
-#include <borealis.hpp>
-
 #include <switch.h>
-
-#include <app/Config.hpp>
-#include <download/DownloadManager.hpp>
-#include <install/InstallManager.hpp>
 #include <install/es_ipc.h>
 #include <install/ns_ext_ipc.h>
-#include <ui/BrowseTab.hpp>
-#include <ui/QueueTab.hpp>
-#include <ui/SettingsTab.hpp>
-
-namespace i18n = brls::i18n;
-
-namespace {
-pinx::app::Config               g_config;
-pinx::download::DownloadManager g_downloader;
-pinx::install::InstallManager   g_installer;
-}
+#include <ui/MainApplication.hpp>
 
 int main(int argc, char *argv[]) {
+    socketInitializeDefault();
     splInitialize();
     splCryptoInitialize();
     ncmInitialize();
@@ -27,48 +12,26 @@ int main(int argc, char *argv[]) {
     nsInitialize();
     nsextInitialize();
 
-    if(!brls::Application::init(APP_TITLE)) {
-        brls::Logger::error("Unable to init Borealis application");
-        nsextExit();
-        esExit();
-        ncmExit();
-        splCryptoExit();
-        splExit();
-        return EXIT_FAILURE;
-    }
+    auto renderer_opts = pu::ui::render::RendererInitOptions(SDL_INIT_EVERYTHING,
+                             pu::ui::render::RendererHardwareFlags);
+    renderer_opts.UseRomfs();
+    renderer_opts.SetPlServiceType(PlServiceType_User);
+    renderer_opts.AddDefaultAllSharedFonts();
+    renderer_opts.SetInputPlayerCount(1);
+    renderer_opts.AddInputNpadStyleTag(HidNpadStyleSet_NpadStandard);
+    renderer_opts.AddInputNpadIdType(HidNpadIdType_Handheld);
+    renderer_opts.AddInputNpadIdType(HidNpadIdType_No1);
 
-    g_config = pinx::app::Config::Load();
+    renderer_opts.AddExtraDefaultFontSize(72);
+    renderer_opts.AddExtraDefaultFontSize(56);
 
-    if(g_config.language.empty())
-        i18n::loadTranslations();
-    else
-        i18n::loadTranslations(g_config.language);
+    auto renderer = pu::ui::render::Renderer::New(renderer_opts);
+    auto app = pinx::ui::MainApplication::New(renderer);
+    app->Load();
+    app->ShowWithFadeIn();
 
-    using namespace brls::i18n::literals;
-
-    brls::TabFrame *root = new brls::TabFrame();
-    root->setTitle(APP_TITLE);
-    root->setFooterText("v" APP_VERSION);
-    root->setIcon("romfs:/icon/borealis.jpg");
-
-    auto *browse = new pinx::ui::BrowseTab(&g_config, &g_downloader, &g_installer);
-    root->addTab("portnx/tabs/ports"_i18n, browse);
-    root->addTab("portnx/tabs/queue"_i18n, new pinx::ui::QueueTab(&g_downloader, &g_installer));
-
-    root->addSeparator();
-
-    root->addTab("portnx/tabs/settings"_i18n, new pinx::ui::SettingsTab(&g_config, [browse]() {
-        browse->reload();
-    }));
-
-    root->registerAction("", brls::Key::B, [] { return true; });
-
-    brls::Application::pushView(root);
-
-    while(brls::Application::mainLoop());
-
-    g_installer.shutdown();
-    g_downloader.shutdown();
+    app->GetInstaller()->shutdown();
+    app->GetDownloader()->shutdown();
 
     nsextExit();
     nsExit();
@@ -76,6 +39,7 @@ int main(int argc, char *argv[]) {
     ncmExit();
     splCryptoExit();
     splExit();
+    socketExit();
 
-    return EXIT_SUCCESS;
+    return 0;
 }
