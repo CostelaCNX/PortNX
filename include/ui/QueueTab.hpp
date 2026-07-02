@@ -20,6 +20,12 @@ class QueueTab {
         void Hide();
         void Poll();
         void RefreshStrings();
+        void CancelCurrent();
+        bool IsActive() const;
+
+        static constexpr s32 kCancelAbsX = 90;
+        static constexpr s32 kCancelAbsY = 660;   // kCY(100) + kCancelY(560)
+        static constexpr s32 kCancelH    = 60;
 
     private:
         pinx::download::DownloadManager *downloader_;
@@ -43,6 +49,7 @@ class QueueTab {
         pu::ui::elm::ProgressBar::Ref progress_bar_;
         pu::ui::elm::TextBlock::Ref   status_text_elm_;
         pu::ui::elm::TextBlock::Ref   queue_text_;
+        pu::ui::elm::TextBlock::Ref   cancel_hint_;
 
         void UpdateElements();
         static std::string FormatSize(std::uint64_t bytes);

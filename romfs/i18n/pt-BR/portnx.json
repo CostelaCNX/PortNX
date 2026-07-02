@@ -28,7 +28,8 @@
         "inst_done":      "Instalado com sucesso.",
         "failed":         "Falha: ",
         "downloading":    "Baixando...",
-        "installing":     "Instalando..."
+        "installing":     "Instalando...",
+        "cancel":         "Cancelar"
     },
     "settings": {
         "server_url":       "URL do índice",

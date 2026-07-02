@@ -583,20 +583,20 @@ bool BrowseTab::HandleInput(u64 kd) {
 
     bool any = false;
 
-    if (kd & HidNpadButton_Left) {
+    if ((kd & HidNpadButton_Left) || (kd & HidNpadButton_StickLLeft) || (kd & HidNpadButton_StickRLeft)) {
         if (grid_sel_ % kGridCols > 0) { --grid_sel_; any = true; }
         else if (grid_page_ > 0)       { --grid_page_; grid_sel_ = kPageSize - 1; any = true; }
     }
-    if (kd & HidNpadButton_Right) {
+    if ((kd & HidNpadButton_Right) || (kd & HidNpadButton_StickLRight) || (kd & HidNpadButton_StickRRight)) {
         if (grid_sel_ % kGridCols < kGridCols - 1 && base + grid_sel_ + 1 < n)
             { ++grid_sel_; any = true; }
         else if (base + kPageSize < n)
             { ++grid_page_; grid_sel_ = 0; any = true; }
     }
-    if (kd & HidNpadButton_Up) {
+    if ((kd & HidNpadButton_Up) || (kd & HidNpadButton_StickLUp) || (kd & HidNpadButton_StickRUp)) {
         if (grid_sel_ >= kGridCols) { grid_sel_ -= kGridCols; any = true; }
     }
-    if (kd & HidNpadButton_Down) {
+    if ((kd & HidNpadButton_Down) || (kd & HidNpadButton_StickLDown) || (kd & HidNpadButton_StickRDown)) {
         if (grid_sel_ + kGridCols < kPageSize && base + grid_sel_ + kGridCols < n)
             { grid_sel_ += kGridCols; any = true; }
     }

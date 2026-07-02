@@ -93,7 +93,7 @@ void MainLayout::BuildHome() {
         this->Add(card_label_[i]);
     }
 
-    // Hint bar — B=\xEE\x82\xA1 Navigate  A=\xEE\x82\xA0 Open  + Exit
+    // Hint bar — DPad=\xEE\x81\xBB\xEE\x81\xBC Navigate  A=\xEE\x82\xA0 Open  Plus=\xEE\x82\xB5 Exit
     home_hint_tb_ = pu::ui::elm::TextBlock::New(0, 1022, "");
     home_hint_tb_->SetColor(kMuted);
     home_hint_tb_->SetFont(kFontSmall);
@@ -104,9 +104,9 @@ void MainLayout::BuildHome() {
 
 void MainLayout::RefreshHints() {
     // Home hint — centered at 1920/2
-    const std::string h = std::string("\xEE\x82\xA1 ") + pinx::i18n::tr("hints.navigate") +
+    const std::string h = std::string("\xEE\x81\xBD ") + pinx::i18n::tr("hints.navigate") +
                           "    \xEE\x82\xA0 " + pinx::i18n::tr("hints.open") +
-                          "    + " + pinx::i18n::tr("hints.exit");
+                          "    \xEE\x82\xB5 " + pinx::i18n::tr("hints.exit");
     home_hint_tb_->SetText(h);
     home_hint_tb_->SetX(kW / 2 - home_hint_tb_->GetWidth() / 2);
 
@@ -253,21 +253,18 @@ void MainLayout::OnInput(u64 kd, u64 /*ku*/, u64 /*kh*/, pu::ui::TouchPoint tp) 
     }
 
     if (home_mode_) {
-        if (kd & HidNpadButton_Left) {
+        if ((kd & HidNpadButton_Left) || (kd & HidNpadButton_StickLLeft) || (kd & HidNpadButton_StickRLeft)) {
             if (home_sel_ > 0) { --home_sel_; UpdateCardColors(); }
         }
-        if (kd & HidNpadButton_Right) {
+        if ((kd & HidNpadButton_Right) || (kd & HidNpadButton_StickLRight) || (kd & HidNpadButton_StickRRight)) {
             if (home_sel_ < kTabCount - 1) { ++home_sel_; UpdateCardColors(); }
         }
         if (kd & HidNpadButton_A) {
             EnterTab(static_cast<Tab>(home_sel_));
         }
         if (!tp.IsEmpty()) {
-            const s32 tx = tp.x * 3 / 2;
-            const s32 ty = tp.y * 3 / 2;
-            const pu::ui::TouchPoint scaled(tx, ty);
             for (s32 i = 0; i < kTabCount; ++i) {
-                if (scaled.HitsRegion(CardX(i), kCardY, kCardW, kCardH)) {
+                if (tp.HitsRegion(CardX(i), kCardY, kCardW, kCardH)) {
                     if (home_sel_ == i) {
                         EnterTab(static_cast<Tab>(i));
                     } else {
@@ -293,17 +290,26 @@ void MainLayout::OnInput(u64 kd, u64 /*ku*/, u64 /*kh*/, pu::ui::TouchPoint tp) 
             return;
         }
 
-        // Touch for browse grid cells (scale 720p→1080p), 3x2 grid
+        if (current_tab_ == Tab::Queue && (kd & HidNpadButton_Y) && queue_->IsActive()) {
+            queue_->CancelCurrent();
+            return;
+        }
+
+        if (!tp.IsEmpty()) {
+            // Touch top bar → back
+            if (tp.HitsRegion(0, 0, kW, kTopBarH)) {
+                BackToHome();
+                return;
+            }
+        }
+
         if (!tp.IsEmpty() && current_tab_ == Tab::Browse) {
-            const s32 tx = tp.x * 3 / 2;
-            const s32 ty = tp.y * 3 / 2;
-            const pu::ui::TouchPoint scaled(tx, ty);
             for (s32 ci = 0; ci < 6; ++ci) {
                 const s32 col = ci % 3;
                 const s32 row = ci / 3;
                 const s32 cx  = 120 + col * 560;
                 const s32 cy  = 130 + row * 420;
-                if (scaled.HitsRegion(cx, cy, 560, 420)) {
+                if (tp.HitsRegion(cx, cy, 560, 420)) {
                     browse_->TouchCell(ci);
                     break;
                 }

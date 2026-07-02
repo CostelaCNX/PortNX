@@ -65,6 +65,11 @@ void QueueTab::AddElementsTo(pu::ui::Layout *layout) {
     queue_text_->SetFont(pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Small));
     layout->Add(queue_text_);
 
+    cancel_hint_ = pu::ui::elm::TextBlock::New(kCancelAbsX, kCancelAbsY, "");
+    cancel_hint_->SetColor(kError);
+    cancel_hint_->SetFont(pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Medium));
+    layout->Add(cancel_hint_);
+
     Hide();
 }
 
@@ -75,6 +80,7 @@ void QueueTab::Show() {
     progress_bar_->SetVisible(true);
     status_text_elm_->SetVisible(true);
     queue_text_->SetVisible(true);
+    cancel_hint_->SetVisible(true);
 }
 
 void QueueTab::Hide() {
@@ -84,6 +90,16 @@ void QueueTab::Hide() {
     progress_bar_->SetVisible(false);
     status_text_elm_->SetVisible(false);
     queue_text_->SetVisible(false);
+    cancel_hint_->SetVisible(false);
+}
+
+bool QueueTab::IsActive() const {
+    return phase_ == Phase::Downloading || phase_ == Phase::Installing;
+}
+
+void QueueTab::CancelCurrent() {
+    downloader_->cancel();
+    installer_->cancel();
 }
 
 void QueueTab::Poll() {
@@ -213,6 +229,14 @@ void QueueTab::UpdateElements() {
                 text += "  " + queue_names_[i];
         }
         SetText(queue_text_, text);
+    }
+
+    // Cancel hint — only visible when active
+    {
+        const bool active = IsActive();
+        cancel_hint_->SetVisible(active);
+        if(active)
+            SetText(cancel_hint_, std::string("\xEE\x82\xA3 ") + pinx::i18n::tr("queue.cancel"));
     }
 }
 

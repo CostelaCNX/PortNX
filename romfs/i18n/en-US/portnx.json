@@ -28,7 +28,8 @@
         "inst_done":      "Installed successfully.",
         "failed":         "Failed: ",
         "downloading":    "Downloading...",
-        "installing":     "Installing..."
+        "installing":     "Installing...",
+        "cancel":         "Cancel"
     },
     "settings": {
         "server_url":       "Index URL",

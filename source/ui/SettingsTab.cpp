@@ -38,6 +38,8 @@ void SettingsTab::AddElementsTo(pu::ui::Layout *layout) {
     storage_item_->SetColor(kTextClr);
     reinstall_item_->SetColor(kTextClr);
 
+    constexpr u64 kActivate = HidNpadButton_A | pu::ui::TouchPseudoKey;
+
     lang_item_->AddOnKey([this]() {
         if (input_guard_ > 0) return;
         std::string &lang = config_->language;
@@ -46,7 +48,7 @@ void SettingsTab::AddElementsTo(pu::ui::Layout *layout) {
         config_->Save();
         pending_rebuild_      = true;
         pending_lang_refresh_ = true;
-    });
+    }, kActivate);
 
     url_item_->AddOnKey([this]() {
         SwkbdConfig swkbd;
@@ -63,19 +65,19 @@ void SettingsTab::AddElementsTo(pu::ui::Layout *layout) {
             if (on_url_changed_) on_url_changed_();
         }
         swkbdClose(&swkbd);
-    });
+    }, kActivate);
 
     storage_item_->AddOnKey([this]() {
         config_->install_to_nand = !config_->install_to_nand;
         config_->Save();
         UpdateItemLabels();
-    });
+    }, kActivate);
 
     reinstall_item_->AddOnKey([this]() {
         config_->force_reinstall = !config_->force_reinstall;
         config_->Save();
         UpdateItemLabels();
-    });
+    }, kActivate);
 
     UpdateItemLabels();
 
