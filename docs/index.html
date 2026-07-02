@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PortNX — Nintendo Switch Port Installer</title>
+<meta name="description" content="Homebrew para Nintendo Switch que instala ports de jogos a partir de um catálogo remoto. Suporta NSP, NSZ, XCI e XCZ.">
+<meta property="og:title" content="PortNX">
+<meta property="og:description" content="Instale ports no Nintendo Switch direto do seu servidor.">
+<meta property="og:type" content="website">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0b0e;
+    --surface:  #0e1018;
+    --card:     #13161f;
+    --border:   #1e2333;
+    --accent:   #3b82f6;
+    --accent2:  #c40000;
+    --green:    #3fb950;
+    --text:     #e6edf3;
+    --muted:    #8b949e;
+    --radius:   12px;
+    --font:     'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,11,14,.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+  }
+  .nav-logo { font-weight: 700; font-size: 1.1rem; letter-spacing: .04em; color: var(--text); text-decoration: none; }
+  .nav-logo span { color: var(--accent); }
+  nav ul { list-style: none; display: flex; gap: 1.5rem; }
+  nav a { color: var(--muted); text-decoration: none; font-size: .9rem; transition: color .2s; }
+  nav a:hover { color: var(--text); }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center;
+    padding: 6rem 2rem 4rem;
+    background: radial-gradient(ellipse 80% 50% at 50% -10%, #1a2340 0%, transparent 70%);
+    border-bottom: 1px solid var(--border);
+  }
+  .badge {
+    display: inline-block;
+    background: rgba(59,130,246,.15);
+    border: 1px solid rgba(59,130,246,.3);
+    color: var(--accent);
+    font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    padding: .3rem .9rem; border-radius: 99px;
+    margin-bottom: 1.5rem;
+  }
+  .hero h1 {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 800; letter-spacing: -.02em;
+    line-height: 1.15;
+    margin-bottom: 1.2rem;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero p {
+    max-width: 540px; margin: 0 auto 2.4rem;
+    color: var(--muted); font-size: 1.1rem;
+  }
+  .btn-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .7rem 1.6rem; border-radius: var(--radius);
+    font-size: .95rem; font-weight: 600; text-decoration: none;
+    transition: filter .2s, transform .15s;
+    cursor: pointer;
+  }
+  .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+
+  /* ── TAGS ── */
+  .tags { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem; }
+  .tag {
+    font-size: .75rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+    padding: .25rem .75rem; border-radius: 6px;
+    background: var(--card); border: 1px solid var(--border); color: var(--muted);
+  }
+
+  /* ── SECTIONS ── */
+  section { padding: 5rem 2rem; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .section-label {
+    font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: .6rem;
+  }
+  h2 {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 700; margin-bottom: .8rem;
+  }
+  .section-sub { color: var(--muted); max-width: 560px; margin-bottom: 3rem; }
+
+  /* ── FEATURES GRID ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.2rem;
+  }
+  .feature-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.6rem;
+    transition: border-color .2s, transform .15s;
+  }
+  .feature-card:hover { border-color: rgba(59,130,246,.4); transform: translateY(-2px); }
+  .icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1rem;
+    font-size: 1.4rem;
+  }
+  .icon-blue  { background: rgba(59,130,246,.15); }
+  .icon-red   { background: rgba(196,0,0,.15); }
+  .icon-green { background: rgba(63,185,80,.15); }
+  .icon-gray  { background: rgba(139,148,158,.12); }
+  .feature-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: .4rem; }
+  .feature-card p  { font-size: .9rem; color: var(--muted); }
+
+  /* ── INSTALL ── */
+  .install-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  @media (max-width: 680px) { .install-grid { grid-template-columns: 1fr; } }
+  .step { display: flex; gap: 1.2rem; align-items: flex-start; margin-bottom: 1.6rem; }
+  .step-num {
+    min-width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: .85rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-text h4 { font-size: .95rem; font-weight: 600; margin-bottom: .2rem; }
+  .step-text p  { font-size: .88rem; color: var(--muted); }
+
+  /* ── CODE BLOCK ── */
+  .code-wrap {
+    background: #0d1117; border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .6rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: .78rem; color: var(--muted);
+  }
+  .code-dots { display: flex; gap: .4rem; }
+  .code-dots span {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #333;
+  }
+  pre {
+    padding: 1.2rem 1.4rem;
+    overflow-x: auto;
+    font-size: .85rem;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    line-height: 1.7;
+    color: #c9d1d9;
+  }
+  .kw { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+  .num { color: #f2cc60; }
+  .cmt { color: #8b949e; }
+  .key { color: #79c0ff; }
+
+  /* ── CATALOG ── */
+  .catalog-section { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+  /* ── BUILD ── */
+  .req-list { list-style: none; display: flex; flex-direction: column; gap: .7rem; margin-bottom: 2rem; }
+  .req-list li { display: flex; align-items: center; gap: .7rem; font-size: .93rem; }
+  .req-list li::before { content: '✓'; color: var(--green); font-weight: 700; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: .88rem;
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+  .footer-links { display: flex; gap: 1.5rem; justify-content: center; margin-bottom: 1rem; }
+
+  /* ── RESPONSIVE NAV ── */
+  @media (max-width: 600px) {
+    nav ul { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#"><span>Port</span>NX</a>
+  <ul>
+    <li><a href="#features">Recursos</a></li>
+    <li><a href="#install">Instalação</a></li>
+    <li><a href="#catalog">Catálogo</a></li>
+    <li><a href="#build">Build</a></li>
+    <li><a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank">Download</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="badge">Nintendo Switch Homebrew</div>
+  <h1>Instale ports no Switch<br><span>direto do seu servidor</span></h1>
+  <p>Homebrew para Nintendo Switch que faz browse e instalação de ports NSP/NSZ/XCI/XCZ a partir de um catálogo JSON remoto — sem etapas intermediárias.</p>
+  <div class="btn-group">
+    <a class="btn btn-primary" href="https://github.com/CostelaCNX/PortNX/releases" target="_blank">
+      ⬇ Download NRO
+    </a>
+    <a class="btn btn-secondary" href="https://github.com/CostelaCNX/PortNX" target="_blank">
+      ⌥ Ver no GitHub
+    </a>
+  </div>
+  <div class="tags">
+    <span class="tag">C++20</span>
+    <span class="tag">Atmosphere CFW</span>
+    <span class="tag">NSZ / NSP / XCI</span>
+    <span class="tag">Tinfoil Index</span>
+    <span class="tag">PT-BR / EN</span>
+    <span class="tag">Open Source</span>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-label">Recursos</div>
+    <h2>Tudo que você precisa</h2>
+    <p class="section-sub">Feito para quem quer instalar ports de forma rápida e organizada, sem depender de aplicativos externos.</p>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="icon icon-blue">🗂</div>
+        <h3>Browse de catálogo</h3>
+        <p>Navega catálogos JSON remotos em grade 3×2 com ícones 256×256, paginação por L/R e cache local de ícones.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon icon-red">⚡</div>
+        <h3>Stream install</h3>
+        <p>Instala NSZ/NSP/XCI/XCZ direto via NCM + ES, sem precisar de armazenamento intermediário no SD.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon icon-green">📥</div>
+        <h3>Fila de instalação</h3>
+        <p>Adicione vários títulos à fila e acompanhe o progresso de download e instalação com barra e porcentagem.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon icon-blue">🔒</div>
+        <h3>Índice criptografado</h3>
+        <p>Suporta o formato TINFOIL (RSA-2048-OAEP + AES-128-ECB + zstd/zlib) além de JSON puro.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon icon-green">✅</div>
+        <h3>Detecção de instalados</h3>
+        <p>Marca titles já instalados consultando o NCM, com fallback por histórico de sessão para títulos sem nome.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon icon-gray">🌐</div>
+        <h3>PT-BR &amp; English</h3>
+        <p>Interface completamente traduzida. Troca de idioma em Ajustes, sem reiniciar. Padrão: Português (BR).</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section id="install" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="container">
+    <div class="section-label">Instalação</div>
+    <h2>Pronto em 4 passos</h2>
+    <p class="section-sub">Requer um Nintendo Switch com Atmosphere CFW instalado.</p>
+    <div class="install-grid">
+      <div>
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <h4>Baixe o PortNX.nro</h4>
+            <p>Na página de releases do GitHub, baixe a versão mais recente do <code>PortNX.nro</code>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <h4>Copie para o SD</h4>
+            <p>Coloque o arquivo em <code>sdmc:/switch/PortNX/PortNX.nro</code>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <h4>Abra pelo hbmenu</h4>
+            <p>No hbmenu do Switch (botão R + jogo), selecione PortNX.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-text">
+            <h4>Configure a URL do índice</h4>
+            <p>Em <strong>Ajustes → URL do índice</strong>, insira a URL do seu servidor JSON.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span>sdmc:/switch/</span>
+          </div>
+          <pre>PortNX/
+├── PortNX.nro
+├── config.json      <span class="cmt"># gerado automaticamente</span>
+└── icons/           <span class="cmt"># cache de ícones</span>
+    └── *.jpg</pre>
+        </div>
+        <div style="margin-top:1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;font-size:.88rem;color:var(--muted);">
+          <strong style="color:var(--text);">⚠ Requisitos</strong><br><br>
+          <ul class="req-list">
+            <li>Nintendo Switch com Atmosphere CFW</li>
+            <li>prod.keys acessível ao homebrew (para NSZ/XCZ)</li>
+            <li>Servidor com catálogo JSON acessível via HTTP/HTTPS</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CATALOG -->
+<section id="catalog" class="catalog-section">
+  <div class="container">
+    <div class="section-label">Catálogo</div>
+    <h2>Formato do índice JSON</h2>
+    <p class="section-sub">O PortNX usa o formato padrão do Tinfoil. Qualquer servidor compatível com Tinfoil funciona. Abaixo um exemplo mínimo e um completo.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+      <div>
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:.6rem;">Mínimo</p>
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span>index.json</span>
+          </div>
+          <pre>{
+  <span class="key">"files"</span>: [
+    {
+      <span class="key">"url"</span>: <span class="str">"https://example.com/Port.nsz"</span>,
+      <span class="key">"size"</span>: <span class="num">1234567890</span>
+    }
+  ]
+}</pre>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:.6rem;">Completo</p>
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span>index.json</span>
+          </div>
+          <pre>{
+  <span class="key">"files"</span>: [
+    {
+      <span class="key">"url"</span>:     <span class="str">"https://cdn.example.com/Port.nsz"</span>,
+      <span class="key">"name"</span>:    <span class="str">"My Port Name"</span>,
+      <span class="key">"size"</span>:    <span class="num">1234567890</span>,
+      <span class="key">"version"</span>: <span class="str">"1.0.0"</span>
+    }
+  ],
+  <span class="key">"directories"</span>: [
+    <span class="str">"https://cdn.example.com/action/"</span>
+  ]
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1.5rem;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:var(--radius);padding:1.2rem;font-size:.9rem;">
+      <strong style="color:var(--accent);">Índice criptografado</strong> &nbsp;—&nbsp;
+      O PortNX também aceita índices no formato TINFOIL (binário com cabeçalho <code>TINFOIL</code>).
+      Para gerar índices criptografados compatíveis, use as ferramentas em
+      <a href="https://github.com/CostelaCNX/PortNX/tree/master/tools" style="color:var(--accent);">tools/</a>.
+    </div>
+  </div>
+</section>
+
+<!-- BUILD -->
+<section id="build">
+  <div class="container">
+    <div class="section-label">Build</div>
+    <h2>Compilar do fonte</h2>
+    <p class="section-sub">Requer devkitPro com as toolchains do Switch.</p>
+
+    <ul class="req-list" style="margin-bottom:1.8rem;">
+      <li>devkitPro — devkitA64</li>
+      <li>libnx</li>
+      <li>Switch portlibs (libcurl, mbedTLS, zstd, zlib)</li>
+    </ul>
+
+    <div class="code-wrap" style="max-width:560px;">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>bash</span>
+      </div>
+      <pre><span class="cmt"># Clone com submodules</span>
+git clone --recurse-submodules \
+  https://github.com/CostelaCNX/PortNX.git
+
+<span class="cmt"># Build</span>
+cd PortNX
+make -j$(nproc)
+
+<span class="cmt"># Output</span>
+<span class="kw">→</span> PortNX.nro</pre>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/CostelaCNX/PortNX" target="_blank">GitHub</a>
+    <a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank">Releases</a>
+    <a href="https://github.com/CostelaCNX/PortNX/issues" target="_blank">Issues</a>
+    <a href="https://github.com/CostelaCNX/PortNX/blob/master/LICENSE" target="_blank">Licença GPLv3</a>
+  </div>
+  <p>PortNX &copy; 2025 CostelaBR &nbsp;·&nbsp; Nintendo Switch homebrew, não afiliado à Nintendo.</p>
+</footer>
+
+</body>
+</html>
