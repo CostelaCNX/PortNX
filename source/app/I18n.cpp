@@ -12,9 +12,8 @@ namespace {
 using json = nlohmann::json;
 
 std::unordered_map<std::string, std::string> g_strings;
-static const std::string g_empty;
 
-static std::string readFile(const char *path) {
+std::string readFile(const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) return {};
     std::string buf;
@@ -26,7 +25,7 @@ static std::string readFile(const char *path) {
     return buf;
 }
 
-static void loadLang(const std::string &lang_code) {
+void loadLang(const std::string &lang_code) {
     const std::string path = "romfs:/i18n/" + lang_code + "/portnx.json";
     const std::string raw  = readFile(path.c_str());
     if (raw.empty()) return;
@@ -43,7 +42,7 @@ static void loadLang(const std::string &lang_code) {
     }
 }
 
-} // namespace
+}
 
 void Init(const std::string &lang_code) {
     g_strings.clear();
@@ -71,4 +70,4 @@ std::string trf(const std::string &key, std::initializer_list<std::string> args)
     return s;
 }
 
-} // namespace pinx::i18n
+}

@@ -3,7 +3,7 @@
 #include <install/ns_ext_ipc.h>
 #include <ui/MainApplication.hpp>
 
-int main(int argc, char *argv[]) {
+int main(int, char *[]) {
     socketInitializeDefault();
     splInitialize();
     splCryptoInitialize();

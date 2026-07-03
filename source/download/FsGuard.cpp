@@ -13,8 +13,4 @@ std::uint64_t FreeBytes(const std::string &path) {
     return static_cast<std::uint64_t>(st.f_bavail) * unit;
 }
 
-bool ExceedsFat32(std::uint64_t size) {
-    return size >= (4ULL * 1024ULL * 1024ULL * 1024ULL);
-}
-
 }

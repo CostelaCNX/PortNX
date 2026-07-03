@@ -25,7 +25,6 @@ namespace {
 constexpr std::size_t kStreamBufferSize    = 512 * 1024;
 constexpr std::size_t kPlaceholderFlushSize = 1 * 1024 * 1024;
 constexpr const char *kTempDir             = "sdmc:/switch/PortNX/tmp";
-constexpr const char *kNczStreamTemp       = "sdmc:/switch/PortNX/tmp/stream_ncz.ncz";
 
 class BufferedPlaceholderWriter {
 public:
@@ -461,7 +460,7 @@ InstallResult InstallFromEntries(FILE *file,
     return result;
 }
 
-} // anon
+}
 
 InstallResult InstallNsp(const std::string &file_path,
                           const InstallConfig &config,

@@ -16,7 +16,7 @@ std::string UrlLabel(const std::string &url) {
     return url.empty() ? pinx::i18n::tr("settings.not_set") : url;
 }
 
-} // namespace
+}
 
 SettingsTab::SettingsTab(pinx::app::Config *cfg,
                          std::function<void()> on_url_changed,
@@ -139,4 +139,4 @@ void SettingsTab::UpdateItemLabels() {
     if (menu_) menu_->ForceReloadItems();
 }
 
-} // namespace pinx::ui
+}

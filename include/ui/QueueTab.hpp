@@ -24,7 +24,7 @@ class QueueTab {
         bool IsActive() const;
 
         static constexpr s32 kCancelAbsX = 90;
-        static constexpr s32 kCancelAbsY = 660;   // kCY(100) + kCancelY(560)
+        static constexpr s32 kCancelAbsY = 660;
         static constexpr s32 kCancelH    = 60;
 
     private:
@@ -52,8 +52,7 @@ class QueueTab {
         pu::ui::elm::TextBlock::Ref   cancel_hint_;
 
         void UpdateElements();
-        static std::string FormatSize(std::uint64_t bytes);
         void SetText(pu::ui::elm::TextBlock::Ref &tb, const std::string &text);
 };
 
-} // namespace pinx::ui
+}

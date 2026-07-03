@@ -15,11 +15,9 @@ struct InstallProgress {
     std::uint32_t nca_index         = 0;
     std::uint32_t nca_count         = 0;
     bool          decompressing     = false;
-    double        bytes_per_second  = 0.0;
 };
 
 using ProgressCallback = std::function<void(const InstallProgress &)>;
-using StopCallback     = std::function<bool()>;
 
 struct InstallResult {
     bool          success = false;
@@ -29,8 +27,6 @@ struct InstallResult {
 
 struct InstallConfig {
     NcmStorageId dest_storage_id = NcmStorageId_SdCard;
-    bool         verify_nca_sigs = true;
-    bool         allow_unsigned  = false;
     bool         ignore_req_fw   = true;
     bool         reinstall_ncas  = false;
 };

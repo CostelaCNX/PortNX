@@ -4,21 +4,18 @@
 
 namespace pinx::ui {
 
-// Pure black + SNES Super Famicom button palette
 static constexpr pu::ui::Color kBlack    = {   0,   0,   0, 255 };
 static constexpr pu::ui::Color kTopBarBg = {  12,  12,  18, 255 };
 static constexpr pu::ui::Color kWhite    = { 255, 255, 255, 255 };
 static constexpr pu::ui::Color kMuted    = { 160, 160, 175, 255 };
 static constexpr pu::ui::Color kCardDark = {  14,  14,  20, 255 };
 
-// SNES Super Famicom colors: A=Red, X=Blue, Y=Green
 static constexpr pu::ui::Color kSnesColors[3] = {
-    { 196,   0,   0, 255 }, // A (Red)   -> Ports/Browse
-    {  20,  80, 200, 255 }, // X (Blue)  -> Queue
-    {   0, 140,   0, 255 }, // Y (Green) -> Settings
+    { 196,   0,   0, 255 },
+    {  20,  80, 200, 255 },
+    {   0, 140,   0, 255 },
 };
 
-// Tab i18n keys (order: Browse, Queue, Settings)
 static constexpr const char *kTabKeys[3] = {
     "tabs.ports", "tabs.queue", "tabs.settings"
 };
@@ -27,7 +24,6 @@ static const std::string kFontMedium = pu::ui::GetDefaultFont(pu::ui::DefaultFon
 static const std::string kFontSmall  = pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Small);
 
 s32 MainLayout::CardX(const s32 idx) {
-    // gap = (1920 - 3*360) / 4 = 210
     const s32 gap = (kW - kTabCount * kCardW) / (kTabCount + 1);
     return gap + idx * (kCardW + gap);
 }
@@ -51,11 +47,10 @@ void MainLayout::BuildHome() {
     home_bg_ = pu::ui::elm::Rectangle::New(0, 0, kW, kH, kBlack);
     this->Add(home_bg_);
 
-    // Logo: 300x300 centered horizontally and vertically in the space above the cards
     {
         static constexpr s32 kLogoSz = 300;
-        static constexpr s32 kLogoX  = (kW - kLogoSz) / 2;      // 810
-        static constexpr s32 kLogoY  = (kCardY - kLogoSz) / 2;  // 70
+        static constexpr s32 kLogoX  = (kW - kLogoSz) / 2;
+        static constexpr s32 kLogoY  = (kCardY - kLogoSz) / 2;
         auto raw = pu::ui::render::LoadImageFromFile("romfs:/icon.jpg");
         pu::sdl2::TextureHandle::Ref th = raw ? pu::sdl2::TextureHandle::New(raw) : nullptr;
         home_logo_ = pu::ui::elm::Image::New(kLogoX, kLogoY, th);
@@ -73,11 +68,9 @@ void MainLayout::BuildHome() {
     for (s32 i = 0; i < kTabCount; ++i) {
         const s32 cx = CardX(i);
 
-        // Selection frame: 360x360, SNES color when selected
         card_bg_[i] = pu::ui::elm::Rectangle::New(cx, kCardY, kCardW, kCardH, kCardDark, 20);
         this->Add(card_bg_[i]);
 
-        // Icon: 300x300, 30px inset in 360x360 frame
         {
             auto raw = pu::ui::render::LoadImageFromFile(kIconPaths[i]);
             pu::sdl2::TextureHandle::Ref th = raw ? pu::sdl2::TextureHandle::New(raw) : nullptr;
@@ -88,7 +81,6 @@ void MainLayout::BuildHome() {
             this->Add(card_icon_img_[i]);
         }
 
-        // Label centered below card — X updated in RefreshStrings()
         card_label_[i] = pu::ui::elm::TextBlock::New(cx, kCardY + kCardH + 30,
                                                       pinx::i18n::tr(kTabKeys[i]));
         card_label_[i]->SetColor(kWhite);
@@ -96,7 +88,6 @@ void MainLayout::BuildHome() {
         this->Add(card_label_[i]);
     }
 
-    // Hint bar — DPad=\xEE\x81\xBB\xEE\x81\xBC Navigate  A=\xEE\x82\xA0 Open  Plus=\xEE\x82\xB5 Exit
     home_hint_tb_ = pu::ui::elm::TextBlock::New(0, 1022, "");
     home_hint_tb_->SetColor(kMuted);
     home_hint_tb_->SetFont(kFontSmall);
@@ -106,7 +97,6 @@ void MainLayout::BuildHome() {
 }
 
 void MainLayout::RefreshHints() {
-    // Home hint — centered at 1920/2
     const std::string h = std::string("\xEE\x81\xBD ") + pinx::i18n::tr("hints.navigate") +
                           "    \xEE\x82\xA0 " + pinx::i18n::tr("hints.open") +
                           "    \xEE\x82\xB5 " + pinx::i18n::tr("hints.exit");
@@ -150,10 +140,8 @@ void MainLayout::BuildTabs() {
     queue_    = std::make_unique<QueueTab>(app_->GetDownloader(),
                                            app_->GetInstaller());
     settings_ = std::make_unique<SettingsTab>(app_->GetConfig(), [this]() {
-        // Called when URL changes in Settings; language change triggers RefreshStrings()
         browse_->reload();
     }, [this]() {
-        // Called when language changes
         pinx::i18n::Init(app_->GetConfig()->language);
         RefreshStrings();
     });
@@ -168,7 +156,6 @@ void MainLayout::RefreshStrings() {
     browse_->RefreshStrings();
     queue_->RefreshStrings();
     settings_->RefreshStrings();
-    // Re-enter current context to update title
     if (!home_mode_)
         content_title_->SetText(pinx::i18n::tr(kTabKeys[static_cast<u8>(current_tab_)]));
 }
@@ -301,7 +288,6 @@ void MainLayout::OnInput(u64 kd, u64 /*ku*/, u64 /*kh*/, pu::ui::TouchPoint tp) 
         }
 
         if (!tp.IsEmpty()) {
-            // Touch top bar → back
             if (tp.HitsRegion(0, 0, kW, kTopBarH)) {
                 BackToHome();
                 return;
@@ -318,4 +304,4 @@ void MainLayout::OnInput(u64 kd, u64 /*ku*/, u64 /*kh*/, pu::ui::TouchPoint tp) 
     }
 }
 
-} // namespace pinx::ui
+}

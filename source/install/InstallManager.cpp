@@ -184,8 +184,6 @@ void InstallManager::runStream(StreamRequest req) {
 void InstallManager::run(Request req) {
     InstallConfig config;
     config.dest_storage_id = NcmStorageId_SdCard;
-    config.verify_nca_sigs = true;
-    config.allow_unsigned  = true;
     config.ignore_req_fw   = true;
     config.reinstall_ncas  = false;
 

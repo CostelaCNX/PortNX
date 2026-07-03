@@ -37,7 +37,6 @@ class BrowseTab {
         void TouchCell(s32 slot);
         void RefreshStrings();
 
-        // Public so free thread functions in the .cpp can reference them.
         struct IconResult {
             std::uint32_t        gen;
             std::string          url;
@@ -58,7 +57,6 @@ class BrowseTab {
             std::string            error;
         };
 
-        // Grid entry — one item in the catalog
         struct GridEntry {
             std::string name, url, icon_url, filename, format, version, sha256;
             std::uint64_t size = 0, title_id = 0;
@@ -81,7 +79,6 @@ class BrowseTab {
 
         bool pending_initial_load_ = false;
 
-        // Grid constants (3×2, 6 items/page)
         static constexpr s32 kGridCols  = 3;
         static constexpr s32 kGridRows  = 2;
         static constexpr s32 kGridPage  = kGridCols * kGridRows; // 6
@@ -91,7 +88,6 @@ class BrowseTab {
         static constexpr s32 kGridX     = 120;
         static constexpr s32 kGridY     = 130;
 
-        // List constants (8 items/page, full-width rows)
         static constexpr s32 kListRows   = 8;
         static constexpr s32 kListX      = 120;
         static constexpr s32 kListY      = 108;
@@ -99,7 +95,7 @@ class BrowseTab {
         static constexpr s32 kListH      = 96;
         static constexpr s32 kListIconSz = 72;
 
-        static constexpr s32 kMaxCells  = kListRows; // larger of the two page sizes
+        static constexpr s32 kMaxCells  = kListRows;
 
         ViewMode view_mode_ = ViewMode::Grid;
         s32 PageSize() const {
@@ -114,18 +110,15 @@ class BrowseTab {
         s32                             sync_frame_ = 0;
         void SyncQueuedUrls();
 
-        // Per-cell UI elements (kMaxCells = 8)
         std::array<pu::ui::elm::Rectangle::Ref, kMaxCells> cell_bg_;
         std::array<pu::ui::elm::Image::Ref,     kMaxCells> cell_img_;
         std::array<pu::ui::elm::TextBlock::Ref, kMaxCells> cell_lbl_;
         std::array<pu::ui::elm::TextBlock::Ref, kMaxCells> cell_meta_;
 
-        // Status / page info
         pu::ui::elm::TextBlock::Ref status_tb_;
         pu::ui::elm::TextBlock::Ref page_tb_;
         pu::ui::elm::TextBlock::Ref browse_hint_tb_;
 
-        // Toast notification (green, expires after ~3s)
         pu::ui::elm::Rectangle::Ref toast_bg_;
         pu::ui::elm::TextBlock::Ref toast_tb_;
         s32                         toast_countdown_ = 0;
@@ -138,14 +131,12 @@ class BrowseTab {
         void tickFetch();
         void showMessage(const std::string &msg);
 
-        // --- Async catalog fetch ---
         std::shared_ptr<CatalogFetch>    pending_fetch_;
         static constexpr std::size_t     kFetchStackSize = 4 * 1024 * 1024;
         Thread                           fetch_thread_{};
         alignas(4096) uint8_t            fetch_stack_[kFetchStackSize]{};
         bool                             fetch_thread_running_ = false;
 
-        // --- Async icon loading ---
         std::shared_ptr<IconState>                      icon_state_;
         std::unordered_map<std::string, std::size_t>   icon_items_; // url -> entry index
         pinx::net::HttpOptions                          icon_pending_opts_;
@@ -160,4 +151,4 @@ class BrowseTab {
         void tickIcons();
 };
 
-} // namespace pinx::ui
+}

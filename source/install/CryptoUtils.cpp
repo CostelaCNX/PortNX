@@ -5,7 +5,6 @@
 
 #include <switch.h>
 #include <mbedtls/bignum.h>
-#include <mbedtls/sha256.h>
 
 namespace pinx::install {
 
@@ -81,88 +80,6 @@ void EncryptNcaHeader(void *header, std::size_t length, const HeaderKey &key) {
         aes128XtsEncrypt(&ctx, bytes + sector * kNcaSectorSize,
                          bytes + sector * kNcaSectorSize, kNcaSectorSize);
     }
-}
-
-namespace {
-
-void CalculateMgf1AndXor(unsigned char *data, std::size_t data_size,
-                         const void *source, std::size_t source_size) {
-    unsigned char h_buf[0x100] = {};
-    std::memcpy(h_buf, source, source_size);
-
-    unsigned char mgf1_buf[0x20];
-    std::size_t ofs = 0;
-    unsigned int seed = 0;
-
-    while(ofs < data_size) {
-        for(unsigned int i = 0; i < sizeof(seed); i++) {
-            h_buf[source_size + 3 - i] = static_cast<unsigned char>((seed >> (8 * i)) & 0xFF);
-        }
-        sha256CalculateHash(mgf1_buf, h_buf, source_size + 4);
-
-        for(std::size_t i = ofs; (i < data_size) && (i < ofs + 0x20); i++) {
-            data[i] ^= mgf1_buf[i - ofs];
-        }
-        seed++;
-        ofs += 0x20;
-    }
-}
-
-}
-
-bool Rsa2048PssVerify(const void *data, std::size_t len,
-                      const unsigned char *signature,
-                      const unsigned char *modulus) {
-    constexpr std::size_t kRsa2048Bytes = 0x100;
-
-    mbedtls_mpi sig_mpi, mod_mpi, e_mpi, msg_mpi;
-    mbedtls_mpi_init(&sig_mpi);
-    mbedtls_mpi_init(&mod_mpi);
-    mbedtls_mpi_init(&e_mpi);
-    mbedtls_mpi_init(&msg_mpi);
-
-    const unsigned char exponent[3] = { 1, 0, 1 };
-    mbedtls_mpi_read_binary(&e_mpi, exponent, 3);
-    mbedtls_mpi_read_binary(&sig_mpi, signature, kRsa2048Bytes);
-    mbedtls_mpi_read_binary(&mod_mpi, modulus, kRsa2048Bytes);
-
-    unsigned char m_buf[kRsa2048Bytes];
-    bool ok = false;
-
-    if(mbedtls_mpi_exp_mod(&msg_mpi, &sig_mpi, &e_mpi, &mod_mpi, nullptr) == 0) {
-        if(mbedtls_mpi_write_binary(&msg_mpi, m_buf, kRsa2048Bytes) == 0) {
-            if(m_buf[kRsa2048Bytes - 1] == 0xBC) {
-                unsigned char h_buf[0x24] = {};
-                std::memcpy(h_buf, m_buf + kRsa2048Bytes - 0x20 - 0x1, 0x20);
-
-                CalculateMgf1AndXor(m_buf, kRsa2048Bytes - 0x20 - 1, h_buf, 0x20);
-                m_buf[0] &= 0x7F;
-
-                bool db_ok = true;
-                for(std::size_t i = 0; i < kRsa2048Bytes - 0x20 - 0x20 - 1 - 1; i++) {
-                    if(m_buf[i] != 0) { db_ok = false; break; }
-                }
-                if(db_ok && (m_buf[kRsa2048Bytes - 0x20 - 0x20 - 1 - 1] == 1)) {
-                    unsigned char validate_buf[8 + 0x20 + 0x20] = {};
-                    unsigned char validate_hash[0x20];
-
-                    sha256CalculateHash(validate_buf + 8, data, len);
-                    std::memcpy(validate_buf + 0x28,
-                                m_buf + kRsa2048Bytes - 0x20 - 0x20 - 1, 0x20);
-                    sha256CalculateHash(validate_hash, validate_buf, sizeof(validate_buf));
-
-                    ok = (std::memcmp(h_buf, validate_hash, 0x20) == 0);
-                }
-            }
-        }
-    }
-
-    mbedtls_mpi_free(&sig_mpi);
-    mbedtls_mpi_free(&mod_mpi);
-    mbedtls_mpi_free(&e_mpi);
-    mbedtls_mpi_free(&msg_mpi);
-
-    return ok;
 }
 
 }

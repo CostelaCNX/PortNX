@@ -13,32 +13,32 @@
 namespace pinx::ui {
 namespace {
 
-static constexpr pu::ui::Color kCellClr  = {  18,  22,  30, 255 };
-static constexpr pu::ui::Color kSelClr   = {  30,  60, 100, 255 };
-static constexpr pu::ui::Color kTextClr  = { 230, 237, 243, 255 };
-static constexpr pu::ui::Color kMutedClr = { 139, 148, 158, 255 };
+constexpr pu::ui::Color kCellClr  = {  18,  22,  30, 255 };
+constexpr pu::ui::Color kSelClr   = {  30,  60, 100, 255 };
+constexpr pu::ui::Color kTextClr  = { 230, 237, 243, 255 };
+constexpr pu::ui::Color kMutedClr = { 139, 148, 158, 255 };
 
-static const std::string kFontSmall  = pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Small);
-static const std::string kFontMedium = pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Medium);
+const std::string kFontSmall  = pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Small);
+const std::string kFontMedium = pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Medium);
 
-static constexpr const char *kIconCacheDir = "sdmc:/switch/PortNX/icons";
+constexpr const char *kIconCacheDir = "sdmc:/switch/PortNX/icons";
 
-static std::unordered_map<std::string, std::vector<uint8_t>> s_icon_cache;
+std::unordered_map<std::string, std::vector<uint8_t>> s_icon_cache;
 
-static std::uint64_t fnv1a64(const std::string &s) {
+std::uint64_t fnv1a64(const std::string &s) {
     std::uint64_t h = 14695981039346656037ULL;
     for (unsigned char c : s) { h ^= c; h *= 1099511628211ULL; }
     return h;
 }
 
-static std::string iconCachePath(const std::string &url) {
+std::string iconCachePath(const std::string &url) {
     char buf[128];
     std::snprintf(buf, sizeof(buf), "%s/%016llx.jpg", kIconCacheDir,
                   static_cast<unsigned long long>(fnv1a64(url)));
     return buf;
 }
 
-static std::vector<uint8_t> loadIconFromDisk(const std::string &url) {
+std::vector<uint8_t> loadIconFromDisk(const std::string &url) {
     FILE *f = fopen(iconCachePath(url).c_str(), "rb");
     if (!f) return {};
     fseek(f, 0, SEEK_END);
@@ -51,7 +51,7 @@ static std::vector<uint8_t> loadIconFromDisk(const std::string &url) {
     return buf;
 }
 
-static void saveIconToDisk(const std::string &url, const std::vector<uint8_t> &data) {
+void saveIconToDisk(const std::string &url, const std::vector<uint8_t> &data) {
     mkdir(kIconCacheDir, 0777);
     FILE *f = fopen(iconCachePath(url).c_str(), "wb");
     if (!f) return;
@@ -59,7 +59,7 @@ static void saveIconToDisk(const std::string &url, const std::vector<uint8_t> &d
     fclose(f);
 }
 
-static std::string HumanSize(std::uint64_t bytes) {
+std::string HumanSize(std::uint64_t bytes) {
     const char *units[] = {"B", "KB", "MB", "GB", "TB"};
     double value = static_cast<double>(bytes);
     int unit = 0;
@@ -71,8 +71,6 @@ static std::string HumanSize(std::uint64_t bytes) {
         std::snprintf(buf, sizeof(buf), "%.1f %s", value, units[unit]);
     return buf;
 }
-
-// ---- Thread arg structs ----
 
 struct IconThreadArgs {
     std::shared_ptr<BrowseTab::IconState> state;
@@ -138,9 +136,7 @@ void fetchThreadFunc(void *arg) {
     delete a;
 }
 
-} // namespace
-
-// ---- BrowseTab implementation ----
+}
 
 BrowseTab::BrowseTab(pinx::app::Config *cfg,
                      pinx::download::DownloadManager *dl,
@@ -163,14 +159,12 @@ BrowseTab::~BrowseTab() {
 }
 
 void BrowseTab::AddElementsTo(pu::ui::Layout *layout) {
-    // Status TextBlock (loading / error / empty)
     status_tb_ = pu::ui::elm::TextBlock::New(kGridX + 50, kGridY + 300,
                                               pinx::i18n::tr("browse.loading"));
     status_tb_->SetColor(kMutedClr);
     status_tb_->SetFont(kFontMedium);
     layout->Add(status_tb_);
 
-    // Create kMaxCells cells (shared by grid and list modes)
     for (s32 i = 0; i < kMaxCells; ++i) {
         const s32 col = i % kGridCols;
         const s32 row = i / kGridCols;
@@ -189,7 +183,6 @@ void BrowseTab::AddElementsTo(pu::ui::Layout *layout) {
         cell_img_[i]->SetVisible(false);
         layout->Add(cell_img_[i]);
 
-        // Name label: full width of cell for longer names
         cell_lbl_[i] = pu::ui::elm::TextBlock::New(cx + 8, iy + kIconSz + 8, "");
         cell_lbl_[i]->SetColor(kTextClr);
         cell_lbl_[i]->SetFont(kFontSmall);
@@ -201,20 +194,17 @@ void BrowseTab::AddElementsTo(pu::ui::Layout *layout) {
         layout->Add(cell_meta_[i]);
     }
 
-    // Page indicator
     page_tb_ = pu::ui::elm::TextBlock::New(kGridX + 400, kGridY + kGridRows * kCellH + 20, "");
     page_tb_->SetColor(kMutedClr);
     page_tb_->SetFont(kFontSmall);
     layout->Add(page_tb_);
 
-    // Control hints
     browse_hint_tb_ = pu::ui::elm::TextBlock::New(kGridX, kGridY + kGridRows * kCellH + 50, "");
     browse_hint_tb_->SetColor(kMutedClr);
     browse_hint_tb_->SetFont(kFontSmall);
     layout->Add(browse_hint_tb_);
     RefreshStrings();
 
-    // Toast notification — green overlay, top-right, expires after ~3s
     toast_bg_ = pu::ui::elm::Rectangle::New(1230, 28, 660, 64, pu::ui::Color{20, 130, 30, 230}, 12);
     toast_bg_->SetVisible(false);
     layout->Add(toast_bg_);
@@ -266,7 +256,6 @@ void BrowseTab::Hide() {
 }
 
 void BrowseTab::Poll() {
-    // Toast countdown (runs regardless of visibility so it expires naturally)
     if (toast_countdown_ > 0) {
         --toast_countdown_;
         if (toast_countdown_ == 0) {
@@ -431,10 +420,7 @@ void BrowseTab::tickFetch() {
                 lower.substr(lower.size() - 4) == ".xcz");
         }
 
-        // Build meta_line
-        if (e.is_back) {
-            e.meta_line = "< Go back";
-        } else if (e.is_directory) {
+        if (e.is_directory) {
             e.meta_line = pinx::i18n::tr("browse.folder");
         } else {
             e.meta_line = e.format;
@@ -476,7 +462,6 @@ void BrowseTab::UpdateGridCells() {
     for (s32 i = 0; i < kMaxCells; ++i) {
         if (!cell_bg_[i]) continue;
 
-        // Reposition element for current view mode
         s32 bg_x, bg_y, bg_w, bg_h;
         s32 img_x, img_y, img_sz;
         s32 lbl_x, lbl_y;
@@ -575,7 +560,6 @@ bool BrowseTab::HandleInput(u64 kd) {
     const s32 n    = static_cast<s32>(entries_.size());
     const s32 base = grid_page_ * PageSize();
 
-    // B: go back in directory tree (consume to prevent MainLayout going home)
     if (kd & HidNpadButton_B) {
         if (nav_stack.size() > 1) {
             nav_stack.pop_back();
@@ -592,7 +576,6 @@ bool BrowseTab::HandleInput(u64 kd) {
         return true;
     }
 
-    // Y: toggle grid / list view
     if (kd & HidNpadButton_Y) {
         view_mode_ = (view_mode_ == ViewMode::Grid) ? ViewMode::List : ViewMode::Grid;
         grid_page_ = 0;
@@ -731,7 +714,6 @@ void BrowseTab::ActivateSelected() {
         req.install_config.dest_storage_id = config->install_to_nand
             ? NcmStorageId_BuiltInUser : NcmStorageId_SdCard;
         req.install_config.ignore_req_fw   = true;
-        req.install_config.allow_unsigned  = true;
         req.install_config.reinstall_ncas  = config->force_reinstall;
         installer->enqueueStream(req);
     } else {
@@ -754,7 +736,7 @@ void BrowseTab::ShowToast(const std::string &name) {
     toast_tb_->SetText(std::string("\xEE\x82\xA0 ") + pinx::i18n::tr("browse.toast_queued") + n);
     toast_bg_->SetVisible(true);
     toast_tb_->SetVisible(true);
-    toast_countdown_ = 180; // ~3s at 60fps
+    toast_countdown_ = 180;
 }
 
 void BrowseTab::scheduleIcons() {
@@ -848,4 +830,4 @@ void BrowseTab::tickIcons() {
     if (any) UpdateGridCells();
 }
 
-} // namespace pinx::ui
+}

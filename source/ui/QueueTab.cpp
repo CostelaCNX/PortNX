@@ -33,7 +33,7 @@ std::string HumanSize(std::uint64_t bytes) {
     return buf;
 }
 
-} // namespace
+}
 
 QueueTab::QueueTab(pinx::download::DownloadManager *dl,
                    pinx::install::InstallManager   *inst)
@@ -183,15 +183,11 @@ void QueueTab::Poll() {
 }
 
 void QueueTab::UpdateElements() {
-    // Completed installs
     {
         std::string text;
         const std::size_t n = completed_names_.size();
         if(n > 0) {
-            char hdr[64];
-            const std::string hdr_s = pinx::i18n::trf("queue.installed_hdr", {std::to_string(n)});
-            std::snprintf(hdr, sizeof(hdr), "%s", hdr_s.c_str());
-            text = hdr;
+            text = pinx::i18n::trf("queue.installed_hdr", {std::to_string(n)});
             const std::size_t from = n > 5 ? n - 5 : 0;
             for(std::size_t i = from; i < n; ++i)
                 text += "  ✓ " + completed_names_[i];
@@ -199,13 +195,10 @@ void QueueTab::UpdateElements() {
         SetText(completed_text_, text);
     }
 
-    // Current job
     SetText(display_name_text_, display_name_);
 
-    // Progress bar
     progress_bar_->SetProgress(static_cast<double>(progress_));
 
-    // Status text color (changes rarely; SetColor re-renders texture so track manually)
     {
         const pu::ui::Color clr = (phase_ == Phase::Done)   ? kSuccess :
                                    (phase_ == Phase::Failed) ? kError   : kTextMuted;
@@ -215,15 +208,11 @@ void QueueTab::UpdateElements() {
     }
     SetText(status_text_elm_, status_text_);
 
-    // Pending queue
     {
         std::string text;
         const std::size_t n = queue_names_.size();
         if(n > 0) {
-            char hdr[64];
-            const std::string hdr_s2 = pinx::i18n::trf("queue.pending_hdr", {std::to_string(n)});
-            std::snprintf(hdr, sizeof(hdr), "%s", hdr_s2.c_str());
-            text = hdr;
+            text = pinx::i18n::trf("queue.pending_hdr", {std::to_string(n)});
             const std::size_t show = n > 5 ? 5 : n;
             for(std::size_t i = 0; i < show; ++i)
                 text += "  " + queue_names_[i];
@@ -231,7 +220,6 @@ void QueueTab::UpdateElements() {
         SetText(queue_text_, text);
     }
 
-    // Cancel hint — only visible when active
     {
         const bool active = IsActive();
         cancel_hint_->SetVisible(active);
@@ -249,4 +237,4 @@ void QueueTab::SetText(pu::ui::elm::TextBlock::Ref &tb, const std::string &text)
     if(tb->GetText() != text) tb->SetText(text);
 }
 
-} // namespace pinx::ui
+}

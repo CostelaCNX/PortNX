@@ -59,7 +59,6 @@ NczRangeReader MakeHttpRangeReader(const StreamInstallRequest &req,
 
 bool RangeRead(const StreamInstallRequest &req, std::uint64_t offset, std::uint64_t size,
                std::vector<std::uint8_t> &out, std::string *out_error = nullptr) {
-    net::StreamResult last;
     const auto r = WithRetry([&]() -> net::StreamResult {
         out.assign(static_cast<std::size_t>(size), 0);
         std::size_t received = 0;
