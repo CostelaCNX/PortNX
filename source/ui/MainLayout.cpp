@@ -51,13 +51,16 @@ void MainLayout::BuildHome() {
     home_bg_ = pu::ui::elm::Rectangle::New(0, 0, kW, kH, kBlack);
     this->Add(home_bg_);
 
-    // Logo: 240x240 centered at x=(1920-240)/2=840, y=50
+    // Logo: 300x300 centered horizontally and vertically in the space above the cards
     {
+        static constexpr s32 kLogoSz = 300;
+        static constexpr s32 kLogoX  = (kW - kLogoSz) / 2;      // 810
+        static constexpr s32 kLogoY  = (kCardY - kLogoSz) / 2;  // 70
         auto raw = pu::ui::render::LoadImageFromFile("romfs:/icon.jpg");
         pu::sdl2::TextureHandle::Ref th = raw ? pu::sdl2::TextureHandle::New(raw) : nullptr;
-        home_logo_ = pu::ui::elm::Image::New(840, 50, th);
-        home_logo_->SetWidth(240);
-        home_logo_->SetHeight(240);
+        home_logo_ = pu::ui::elm::Image::New(kLogoX, kLogoY, th);
+        home_logo_->SetWidth(kLogoSz);
+        home_logo_->SetHeight(kLogoSz);
         this->Add(home_logo_);
     }
 
@@ -248,6 +251,8 @@ void MainLayout::UpdateCardColors() {
 
 void MainLayout::OnInput(u64 kd, u64 /*ku*/, u64 /*kh*/, pu::ui::TouchPoint tp) {
     if (kd & HidNpadButton_Plus) {
+        app_->GetDownloader()->cancel();
+        app_->GetInstaller()->cancel();
         app_->CloseWithFadeOut();
         return;
     }
@@ -290,7 +295,7 @@ void MainLayout::OnInput(u64 kd, u64 /*ku*/, u64 /*kh*/, pu::ui::TouchPoint tp) 
             return;
         }
 
-        if (current_tab_ == Tab::Queue && (kd & HidNpadButton_Y) && queue_->IsActive()) {
+        if (current_tab_ == Tab::Queue && (kd & HidNpadButton_X) && queue_->IsActive()) {
             queue_->CancelCurrent();
             return;
         }
@@ -304,16 +309,7 @@ void MainLayout::OnInput(u64 kd, u64 /*ku*/, u64 /*kh*/, pu::ui::TouchPoint tp) 
         }
 
         if (!tp.IsEmpty() && current_tab_ == Tab::Browse) {
-            for (s32 ci = 0; ci < 6; ++ci) {
-                const s32 col = ci % 3;
-                const s32 row = ci / 3;
-                const s32 cx  = 120 + col * 560;
-                const s32 cy  = 130 + row * 420;
-                if (tp.HitsRegion(cx, cy, 560, 420)) {
-                    browse_->TouchCell(ci);
-                    break;
-                }
-            }
+            browse_->HandleTouch(tp);
         }
 
         browse_->Poll();
