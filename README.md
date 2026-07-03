@@ -9,10 +9,9 @@ Files are streamed directly to the SD card or NAND without intermediate storage.
 
 - Home screen with three-card navigation (Browse, Queue, Settings)
 - Browse a remote port catalog over HTTP/HTTPS (encrypted or plain JSON index)
-- 3×2 port grid with icon preview, L/R pagination, and touch support
+- 3×2 grid or full-width list view in Browse (toggle with Y)
 - Stream-install NSZ via NCM + ES
-- Install queue with per-item progress, cancel (Y button), and session history
-- Marks installed ports in the browse list (NCM check + session fallback)
+- Install queue with per-item progress; X cancels current item and auto-starts next
 - Language: English / Português (BR) — switchable in Settings
 - Analog stick (L + R) and touch navigation throughout
 
