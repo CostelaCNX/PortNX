@@ -33,6 +33,7 @@ class BrowseTab {
         void reload();
 
         bool HandleInput(u64 kd);
+        void HandleTouch(const pu::ui::TouchPoint &tp);
         void TouchCell(s32 slot);
         void RefreshStrings();
 
@@ -69,6 +70,8 @@ class BrowseTab {
             pu::sdl2::TextureHandle::Ref icon_tex; // null until loaded
         };
 
+        enum class ViewMode { Grid, List };
+
     private:
         pinx::app::Config               *config;
         pinx::download::DownloadManager *downloader;
@@ -78,30 +81,44 @@ class BrowseTab {
 
         bool pending_initial_load_ = false;
 
-        std::uint32_t            last_completions_ = 0;
-        std::vector<std::string> session_installed_urls_;
+        // Grid constants (3×2, 6 items/page)
+        static constexpr s32 kGridCols  = 3;
+        static constexpr s32 kGridRows  = 2;
+        static constexpr s32 kGridPage  = kGridCols * kGridRows; // 6
+        static constexpr s32 kCellW     = 560;
+        static constexpr s32 kCellH     = 420;
+        static constexpr s32 kIconSz    = 256;
+        static constexpr s32 kGridX     = 120;
+        static constexpr s32 kGridY     = 130;
 
-        // Grid data — 3x2, cells wide enough to show full port names
-        static constexpr s32 kGridCols = 3;
-        static constexpr s32 kGridRows = 2;
-        static constexpr s32 kPageSize = kGridCols * kGridRows; // 6
-        static constexpr s32 kCellW    = 560;
-        static constexpr s32 kCellH    = 420;
-        static constexpr s32 kIconSz   = 256;
-        static constexpr s32 kGridX    = 120; // (1920-3*560)/2 = 120
-        static constexpr s32 kGridY    = 130; // below 100px topbar
+        // List constants (8 items/page, full-width rows)
+        static constexpr s32 kListRows   = 8;
+        static constexpr s32 kListX      = 120;
+        static constexpr s32 kListY      = 108;
+        static constexpr s32 kListW      = 1680;
+        static constexpr s32 kListH      = 96;
+        static constexpr s32 kListIconSz = 72;
+
+        static constexpr s32 kMaxCells  = kListRows; // larger of the two page sizes
+
+        ViewMode view_mode_ = ViewMode::Grid;
+        s32 PageSize() const {
+            return view_mode_ == ViewMode::Grid ? kGridPage : kListRows;
+        }
 
         std::vector<GridEntry>          entries_;
         s32                             grid_page_ = 0;
         s32                             grid_sel_  = 0;
         bool                            is_loading_ = false;
         std::unordered_set<std::string> queued_urls_;
+        s32                             sync_frame_ = 0;
+        void SyncQueuedUrls();
 
-        // Per-cell UI elements (kPageSize = 6 cells)
-        std::array<pu::ui::elm::Rectangle::Ref, kPageSize> cell_bg_;
-        std::array<pu::ui::elm::Image::Ref,     kPageSize> cell_img_;
-        std::array<pu::ui::elm::TextBlock::Ref, kPageSize> cell_lbl_;
-        std::array<pu::ui::elm::TextBlock::Ref, kPageSize> cell_meta_;
+        // Per-cell UI elements (kMaxCells = 8)
+        std::array<pu::ui::elm::Rectangle::Ref, kMaxCells> cell_bg_;
+        std::array<pu::ui::elm::Image::Ref,     kMaxCells> cell_img_;
+        std::array<pu::ui::elm::TextBlock::Ref, kMaxCells> cell_lbl_;
+        std::array<pu::ui::elm::TextBlock::Ref, kMaxCells> cell_meta_;
 
         // Status / page info
         pu::ui::elm::TextBlock::Ref status_tb_;

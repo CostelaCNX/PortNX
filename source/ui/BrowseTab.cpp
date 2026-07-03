@@ -8,7 +8,6 @@
 #include <app/I18n.hpp>
 #include <catalog/IndexParser.hpp>
 #include <catalog/TinfoilDecryptor.hpp>
-#include <install/TitleManager.hpp>
 #include <net/HttpClient.hpp>
 
 namespace pinx::ui {
@@ -171,13 +170,13 @@ void BrowseTab::AddElementsTo(pu::ui::Layout *layout) {
     status_tb_->SetFont(kFontMedium);
     layout->Add(status_tb_);
 
-    // Create 6 grid cells (3x2)
-    for (s32 i = 0; i < kPageSize; ++i) {
+    // Create kMaxCells cells (shared by grid and list modes)
+    for (s32 i = 0; i < kMaxCells; ++i) {
         const s32 col = i % kGridCols;
         const s32 row = i / kGridCols;
         const s32 cx  = kGridX + col * kCellW;
         const s32 cy  = kGridY + row * kCellH;
-        const s32 ix  = cx + (kCellW - kIconSz) / 2; // center icon horizontally in cell
+        const s32 ix  = cx + (kCellW - kIconSz) / 2;
         const s32 iy  = cy + 12;
 
         cell_bg_[i] = pu::ui::elm::Rectangle::New(cx, cy, kCellW - 4, kCellH - 4, kCellClr, 10);
@@ -234,7 +233,7 @@ void BrowseTab::RefreshStrings() {
         const std::string hint =
             std::string("\xEE\x82\xA0 ") + pinx::i18n::tr("hints.queue_open") +
             "   \xEE\x82\xA1 " + pinx::i18n::tr("hints.back") +
-            "   + " + pinx::i18n::tr("hints.exit") +
+            "   \xEE\x82\xA3 " + pinx::i18n::tr("hints.view") +
             "   L/R: " + pinx::i18n::tr("hints.page");
         browse_hint_tb_->SetText(hint);
     }
@@ -243,7 +242,7 @@ void BrowseTab::RefreshStrings() {
 void BrowseTab::Show() {
     visible_ = true;
     status_tb_->SetVisible(true);
-    for (s32 i = 0; i < kPageSize; ++i) {
+    for (s32 i = 0; i < kMaxCells; ++i) {
         cell_bg_[i]->SetVisible(true);
         cell_lbl_[i]->SetVisible(true);
         cell_meta_[i]->SetVisible(true);
@@ -258,7 +257,7 @@ void BrowseTab::Hide() {
     if (status_tb_)      status_tb_->SetVisible(false);
     if (page_tb_)        page_tb_->SetVisible(false);
     if (browse_hint_tb_) browse_hint_tb_->SetVisible(false);
-    for (s32 i = 0; i < kPageSize; ++i) {
+    for (s32 i = 0; i < kMaxCells; ++i) {
         if (cell_bg_[i])   cell_bg_[i]->SetVisible(false);
         if (cell_img_[i])  cell_img_[i]->SetVisible(false);
         if (cell_lbl_[i])  cell_lbl_[i]->SetVisible(false);
@@ -284,17 +283,12 @@ void BrowseTab::Poll() {
         reload();
     }
 
-    {
-        const auto snap = installer->snapshot();
-        if (snap.completions > last_completions_) {
-            last_completions_       = snap.completions;
-            session_installed_urls_ = snap.installed_urls;
-            if (!fetch_thread_running_)
-                reload();
-        }
-    }
-
     tickFetch();
+
+    if (++sync_frame_ >= 60) {
+        sync_frame_ = 0;
+        SyncQueuedUrls();
+    }
 
     if (icon_pending_schedule_) {
         icon_pending_schedule_ = false;
@@ -449,23 +443,6 @@ void BrowseTab::tickFetch() {
             if (!e.version.empty())
                 e.meta_line += (e.meta_line.empty() ? "" : "  v") + e.version;
 
-            bool installed = false;
-            if (item.title_id != 0) {
-                const std::uint32_t iv = pinx::install::GetInstalledVersion(item.title_id);
-                if (iv != UINT32_MAX) {
-                    installed = true;
-                    const std::string ivs = pinx::install::VersionString(iv);
-                    if (!item.version.empty() && item.version != ivs)
-                        e.meta_line += " " + pinx::i18n::tr("browse.update_badge");
-                    else
-                        e.meta_line += " " + pinx::i18n::tr("browse.installed");
-                }
-            }
-            if (!installed) {
-                const auto &urls = session_installed_urls_;
-                if (std::find(urls.begin(), urls.end(), item.url) != urls.end())
-                    e.meta_line += " " + pinx::i18n::tr("browse.installed");
-            }
         }
 
         if (!e.icon_url.empty()) {
@@ -490,16 +467,51 @@ void BrowseTab::showMessage(const std::string &msg) {
 }
 
 void BrowseTab::UpdateGridCells() {
-    if (!status_tb_) return; // not yet initialized
+    if (!status_tb_) return;
 
-    const s32 n    = static_cast<s32>(entries_.size());
-    const s32 base = grid_page_ * kPageSize;
+    const s32 page_sz = PageSize();
+    const s32 n       = static_cast<s32>(entries_.size());
+    const s32 base    = grid_page_ * page_sz;
 
-    for (s32 i = 0; i < kPageSize; ++i) {
+    for (s32 i = 0; i < kMaxCells; ++i) {
         if (!cell_bg_[i]) continue;
 
+        // Reposition element for current view mode
+        s32 bg_x, bg_y, bg_w, bg_h;
+        s32 img_x, img_y, img_sz;
+        s32 lbl_x, lbl_y;
+        s32 meta_x, meta_y;
+
+        if (view_mode_ == ViewMode::Grid) {
+            const s32 col = i % kGridCols;
+            const s32 row = i / kGridCols;
+            bg_x  = kGridX + col * kCellW;
+            bg_y  = kGridY + row * kCellH;
+            bg_w  = kCellW - 4;  bg_h  = kCellH - 4;
+            img_sz = kIconSz;
+            img_x  = bg_x + (kCellW - kIconSz) / 2;
+            img_y  = bg_y + 12;
+            lbl_x  = bg_x + 8;  lbl_y  = img_y + kIconSz + 8;
+            meta_x = bg_x + 8;  meta_y = img_y + kIconSz + 32;
+        } else {
+            bg_x  = kListX;
+            bg_y  = kListY + i * kListH;
+            bg_w  = kListW;      bg_h  = kListH - 4;
+            img_sz = kListIconSz;
+            img_x  = bg_x + 8;
+            img_y  = bg_y + (kListH - kListIconSz) / 2;
+            lbl_x  = bg_x + kListIconSz + 20;  lbl_y  = bg_y + 16;
+            meta_x = bg_x + kListIconSz + 20;  meta_y = bg_y + 48;
+        }
+
+        cell_bg_[i]->SetX(bg_x);    cell_bg_[i]->SetY(bg_y);
+        cell_bg_[i]->SetWidth(bg_w); cell_bg_[i]->SetHeight(bg_h);
+        cell_img_[i]->SetX(img_x);  cell_img_[i]->SetY(img_y);
+        cell_lbl_[i]->SetX(lbl_x);  cell_lbl_[i]->SetY(lbl_y);
+        cell_meta_[i]->SetX(meta_x); cell_meta_[i]->SetY(meta_y);
+
         const s32 abs = base + i;
-        const bool has = !is_loading_ && abs < n;
+        const bool has = !is_loading_ && i < page_sz && abs < n;
 
         cell_bg_[i]->SetVisible(visible_ && has);
         cell_lbl_[i]->SetVisible(visible_ && has);
@@ -512,45 +524,44 @@ void BrowseTab::UpdateGridCells() {
 
         const auto &e = entries_[abs];
 
-        // Selection highlight
         cell_bg_[i]->SetColor(i == grid_sel_ ? kSelClr : kCellClr);
 
-        // Icon — re-enforce 256×256 after SetImage (which resets to native texture size)
         if (e.icon_tex) {
             cell_img_[i]->SetImage(e.icon_tex);
-            cell_img_[i]->SetWidth(kIconSz);
-            cell_img_[i]->SetHeight(kIconSz);
+            cell_img_[i]->SetWidth(img_sz);
+            cell_img_[i]->SetHeight(img_sz);
             cell_img_[i]->SetVisible(visible_);
         } else {
             cell_img_[i]->SetVisible(false);
         }
 
-        // Label (truncate to ~32 chars — wider cells at 560px allow more text)
+        const s32 max_chars = (view_mode_ == ViewMode::Grid) ? 32 : 50;
         std::string lbl = e.name;
-        if (lbl.size() > 32) lbl = lbl.substr(0, 29) + "...";
+        if (static_cast<s32>(lbl.size()) > max_chars)
+            lbl = lbl.substr(0, max_chars - 3) + "...";
         if (cell_lbl_[i]->GetText() != lbl) cell_lbl_[i]->SetText(lbl);
 
-        // Meta
         if (cell_meta_[i]->GetText() != e.meta_line)
             cell_meta_[i]->SetText(e.meta_line);
     }
 
-    // Status text: show when loading or no entries
     status_tb_->SetVisible(visible_ && (is_loading_ || (n == 0 && !is_loading_)));
 
-    // Page indicator
+    const s32 hint_y = (view_mode_ == ViewMode::Grid)
+        ? kGridY + kGridRows * kCellH + 20
+        : kListY + kListRows * kListH + 10;
+
     if (visible_ && !is_loading_ && n > 0) {
-        const s32 total_pages = (n + kPageSize - 1) / kPageSize;
-        char buf[64];
-        // Use trf for format substitution in the page indicator
+        const s32 total_pages = (n + page_sz - 1) / page_sz;
         const std::string page_str = pinx::i18n::trf("browse.page_fmt", {
             std::to_string(grid_page_ + 1),
             std::to_string(total_pages),
             std::to_string(n)
         });
-        std::snprintf(buf, sizeof(buf), "%s", page_str.c_str());
-        page_tb_->SetText(buf);
+        page_tb_->SetText(page_str);
+        page_tb_->SetY(hint_y);
         page_tb_->SetVisible(true);
+        browse_hint_tb_->SetY(hint_y + 30);
         browse_hint_tb_->SetVisible(true);
     } else {
         if (page_tb_)        page_tb_->SetVisible(false);
@@ -562,7 +573,7 @@ bool BrowseTab::HandleInput(u64 kd) {
     if (!visible_) return false;
 
     const s32 n    = static_cast<s32>(entries_.size());
-    const s32 base = grid_page_ * kPageSize;
+    const s32 base = grid_page_ * PageSize();
 
     // B: go back in directory tree (consume to prevent MainLayout going home)
     if (kd & HidNpadButton_B) {
@@ -581,25 +592,53 @@ bool BrowseTab::HandleInput(u64 kd) {
         return true;
     }
 
+    // Y: toggle grid / list view
+    if (kd & HidNpadButton_Y) {
+        view_mode_ = (view_mode_ == ViewMode::Grid) ? ViewMode::List : ViewMode::Grid;
+        grid_page_ = 0;
+        grid_sel_  = 0;
+        UpdateGridCells();
+        return true;
+    }
+
+    const s32 page_sz = PageSize();
     bool any = false;
 
-    if ((kd & HidNpadButton_Left) || (kd & HidNpadButton_StickLLeft) || (kd & HidNpadButton_StickRLeft)) {
-        if (grid_sel_ % kGridCols > 0) { --grid_sel_; any = true; }
-        else if (grid_page_ > 0)       { --grid_page_; grid_sel_ = kPageSize - 1; any = true; }
+    if (view_mode_ == ViewMode::List) {
+        if ((kd & HidNpadButton_Up) || (kd & HidNpadButton_StickLUp) || (kd & HidNpadButton_StickRUp)) {
+            if (grid_sel_ > 0) { --grid_sel_; any = true; }
+            else if (grid_page_ > 0) { --grid_page_; grid_sel_ = page_sz - 1; any = true; }
+        }
+        if ((kd & HidNpadButton_Down) || (kd & HidNpadButton_StickLDown) || (kd & HidNpadButton_StickRDown)) {
+            if (grid_sel_ + 1 < page_sz && base + grid_sel_ + 1 < n) { ++grid_sel_; any = true; }
+            else if (base + page_sz < n) { ++grid_page_; grid_sel_ = 0; any = true; }
+        }
+        if ((kd & HidNpadButton_Left) || (kd & HidNpadButton_StickLLeft) || (kd & HidNpadButton_StickRLeft)) {
+            if (grid_page_ > 0) { --grid_page_; grid_sel_ = 0; any = true; }
+        }
+        if ((kd & HidNpadButton_Right) || (kd & HidNpadButton_StickLRight) || (kd & HidNpadButton_StickRRight)) {
+            if (base + page_sz < n) { ++grid_page_; grid_sel_ = 0; any = true; }
+        }
+    } else {
+        if ((kd & HidNpadButton_Left) || (kd & HidNpadButton_StickLLeft) || (kd & HidNpadButton_StickRLeft)) {
+            if (grid_sel_ % kGridCols > 0) { --grid_sel_; any = true; }
+            else if (grid_page_ > 0)       { --grid_page_; grid_sel_ = kGridPage - 1; any = true; }
+        }
+        if ((kd & HidNpadButton_Right) || (kd & HidNpadButton_StickLRight) || (kd & HidNpadButton_StickRRight)) {
+            if (grid_sel_ % kGridCols < kGridCols - 1 && base + grid_sel_ + 1 < n)
+                { ++grid_sel_; any = true; }
+            else if (base + kGridPage < n)
+                { ++grid_page_; grid_sel_ = 0; any = true; }
+        }
+        if ((kd & HidNpadButton_Up) || (kd & HidNpadButton_StickLUp) || (kd & HidNpadButton_StickRUp)) {
+            if (grid_sel_ >= kGridCols) { grid_sel_ -= kGridCols; any = true; }
+        }
+        if ((kd & HidNpadButton_Down) || (kd & HidNpadButton_StickLDown) || (kd & HidNpadButton_StickRDown)) {
+            if (grid_sel_ + kGridCols < kGridPage && base + grid_sel_ + kGridCols < n)
+                { grid_sel_ += kGridCols; any = true; }
+        }
     }
-    if ((kd & HidNpadButton_Right) || (kd & HidNpadButton_StickLRight) || (kd & HidNpadButton_StickRRight)) {
-        if (grid_sel_ % kGridCols < kGridCols - 1 && base + grid_sel_ + 1 < n)
-            { ++grid_sel_; any = true; }
-        else if (base + kPageSize < n)
-            { ++grid_page_; grid_sel_ = 0; any = true; }
-    }
-    if ((kd & HidNpadButton_Up) || (kd & HidNpadButton_StickLUp) || (kd & HidNpadButton_StickRUp)) {
-        if (grid_sel_ >= kGridCols) { grid_sel_ -= kGridCols; any = true; }
-    }
-    if ((kd & HidNpadButton_Down) || (kd & HidNpadButton_StickLDown) || (kd & HidNpadButton_StickRDown)) {
-        if (grid_sel_ + kGridCols < kPageSize && base + grid_sel_ + kGridCols < n)
-            { grid_sel_ += kGridCols; any = true; }
-    }
+
     bool lr = false;
     if (kd & HidNpadButton_L) {
         lr = true;
@@ -607,15 +646,53 @@ bool BrowseTab::HandleInput(u64 kd) {
     }
     if (kd & HidNpadButton_R) {
         lr = true;
-        if (base + kPageSize < n) { ++grid_page_; grid_sel_ = 0; any = true; }
+        if (base + page_sz < n) { ++grid_page_; grid_sel_ = 0; any = true; }
     }
 
     if (any) UpdateGridCells();
-    return any || lr; // L/R always consumed here — prevents tab switch in MainLayout
+    return any || lr;
+}
+
+void BrowseTab::SyncQueuedUrls() {
+    const auto inst = installer->snapshot();
+    const auto dl   = downloader->snapshot();
+
+    std::unordered_set<std::string> active;
+    if (!inst.active_url.empty()) active.insert(inst.active_url);
+    for (const auto &u : inst.queue_urls) active.insert(u);
+    for (const auto &u : inst.installed_urls) active.insert(u);
+
+    const bool dl_active = dl.state == pinx::download::DownloadManager::State::Running ||
+                           dl.state == pinx::download::DownloadManager::State::Verifying;
+    if (dl_active && !dl.active_url.empty()) active.insert(dl.active_url);
+
+    for (auto it = queued_urls_.begin(); it != queued_urls_.end(); ) {
+        it = active.count(*it) ? std::next(it) : queued_urls_.erase(it);
+    }
+}
+
+void BrowseTab::HandleTouch(const pu::ui::TouchPoint &tp) {
+    if (view_mode_ == ViewMode::Grid) {
+        for (s32 ci = 0; ci < kGridPage; ++ci) {
+            const s32 col = ci % kGridCols;
+            const s32 row = ci / kGridCols;
+            if (tp.HitsRegion(kGridX + col * kCellW, kGridY + row * kCellH, kCellW, kCellH)) {
+                TouchCell(ci);
+                return;
+            }
+        }
+    } else {
+        for (s32 ci = 0; ci < kListRows; ++ci) {
+            if (tp.HitsRegion(kListX, kListY + ci * kListH, kListW, kListH)) {
+                TouchCell(ci);
+                return;
+            }
+        }
+    }
 }
 
 void BrowseTab::TouchCell(s32 slot) {
-    const s32 base = grid_page_ * kPageSize;
+    const s32 base = grid_page_ * PageSize();
     if (base + slot >= static_cast<s32>(entries_.size())) return;
     if (grid_sel_ == slot) {
         ActivateSelected();
@@ -626,7 +703,7 @@ void BrowseTab::TouchCell(s32 slot) {
 }
 
 void BrowseTab::ActivateSelected() {
-    const s32 abs = grid_page_ * kPageSize + grid_sel_;
+    const s32 abs = grid_page_ * PageSize() + grid_sel_;
     if (abs < 0 || abs >= static_cast<s32>(entries_.size())) return;
     const auto &e = entries_[abs];
 

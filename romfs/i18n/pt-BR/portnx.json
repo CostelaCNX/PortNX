@@ -51,6 +51,7 @@
         "back":       "Voltar",
         "back_menu":  "Voltar",
         "queue_open": "Fila/Abrir",
-        "page":       "Página"
+        "page":       "Página",
+        "view":       "Visualização"
     }
 }

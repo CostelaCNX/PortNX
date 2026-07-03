@@ -51,6 +51,7 @@
         "back":       "Back",
         "back_menu":  "Back",
         "queue_open": "Queue/Open",
-        "page":       "Page"
+        "page":       "Page",
+        "view":       "View"
     }
 }
