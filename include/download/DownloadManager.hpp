@@ -37,6 +37,7 @@ class DownloadManager {
             std::string   name;
             std::string   error;
             std::string   result_path;
+            std::string   active_url;
         };
 
         DownloadManager() = default;
@@ -61,6 +62,7 @@ class DownloadManager {
         std::string        name;
         std::string        error;
         std::string        result_path;
+        std::string        active_url_;
 };
 
 }

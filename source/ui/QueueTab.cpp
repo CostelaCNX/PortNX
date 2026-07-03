@@ -236,7 +236,7 @@ void QueueTab::UpdateElements() {
         const bool active = IsActive();
         cancel_hint_->SetVisible(active);
         if(active)
-            SetText(cancel_hint_, std::string("\xEE\x82\xA3 ") + pinx::i18n::tr("queue.cancel"));
+            SetText(cancel_hint_, std::string("\xEE\x82\xA2 ") + pinx::i18n::tr("queue.cancel"));
     }
 }
 

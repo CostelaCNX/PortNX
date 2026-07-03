@@ -30,6 +30,7 @@ bool DownloadManager::start(const Request &req) {
     {
         std::lock_guard<std::mutex> lock(str_mtx);
         name = req.name;
+        active_url_ = req.url;
         error.clear();
         result_path.clear();
     }
@@ -58,6 +59,7 @@ DownloadManager::Snapshot DownloadManager::snapshot() const {
     s.name        = name;
     s.error       = error;
     s.result_path = result_path;
+    s.active_url  = active_url_;
     return s;
 }
 
@@ -104,6 +106,8 @@ void DownloadManager::run(Request req) {
         [this]() { return cancel_flag.load(); });
 
     if(cancel_flag.load()) {
+        std::lock_guard<std::mutex> lock(str_mtx);
+        active_url_.clear();
         state.store(State::Canceled);
         busy.store(false);
         return;

@@ -38,8 +38,11 @@ class InstallManager {
             std::uint64_t title_id      = 0;
             std::uint32_t completions   = 0;   // increments after each successful install
 
-            // Names of pending (not yet started) jobs.
+            // URL of the job currently being processed (empty when idle).
+            std::string              active_url;
+            // Names and URLs of pending (not yet started) jobs.
             std::vector<std::string> queue_names;
+            std::vector<std::string> queue_urls;
             // Names of successfully installed ports (this session).
             std::vector<std::string> completed_names;
             // URLs of successfully installed ports (this session).
@@ -72,6 +75,7 @@ class InstallManager {
 
         mutable std::mutex              str_mtx;
         std::string                     display_name;
+        std::string                     active_url_;
         std::string                     error;
         std::deque<StreamRequest>       job_queue_;
         std::vector<std::string>        completed_names_;

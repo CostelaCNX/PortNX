@@ -32,6 +32,10 @@ bool InstallManager::enqueueStream(const StreamRequest &req) {
         bytes_total.store(0);
         decompressing.store(false);
         title_id.store(0);
+        {
+            std::lock_guard<std::mutex> lk2(str_mtx);
+            active_url_ = first.url;
+        }
         if(worker.joinable()) worker.join();
         worker = std::thread([this, first = std::move(first)]() mutable {
             runStream(std::move(first));
@@ -81,10 +85,6 @@ bool InstallManager::start(const Request &req) {
 }
 
 void InstallManager::cancel() {
-    {
-        std::lock_guard<std::mutex> lk(str_mtx);
-        job_queue_.clear();
-    }
     cancel_flag.store(true);
 }
 
@@ -107,11 +107,14 @@ InstallManager::Snapshot InstallManager::snapshot() const {
     s.completions   = completions.load();
     std::lock_guard<std::mutex> lk(str_mtx);
     s.display_name    = display_name;
+    s.active_url      = active_url_;
     s.error           = error;
     s.completed_names = completed_names_;
     s.installed_urls  = installed_urls_;
-    for(const auto &j : job_queue_)
+    for(const auto &j : job_queue_) {
         s.queue_names.push_back(j.display_name);
+        s.queue_urls.push_back(j.url);
+    }
     return s;
 }
 
@@ -151,15 +154,20 @@ void InstallManager::runStream(StreamRequest req) {
         bool has_next = false;
         {
             std::lock_guard<std::mutex> lk(str_mtx);
-            if(!job_queue_.empty() && !cancel_flag.load()) {
+            if(!job_queue_.empty()) {
                 next = std::move(job_queue_.front());
                 job_queue_.pop_front();
                 display_name = next.display_name;
+                active_url_  = next.url;
                 error.clear();
                 has_next = true;
             } else {
+                active_url_.clear();
                 busy.store(false);
             }
+        }
+        if(has_next) {
+            cancel_flag.store(false);
         }
 
         if(!has_next) break;
