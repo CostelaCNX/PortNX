@@ -81,9 +81,24 @@ void DownloadManager::run(Request req) {
     std::error_code ec;
     std::filesystem::create_directories(std::filesystem::path(req.dest_path).parent_path(), ec);
 
+    std::uint64_t existing_part_size = 0;
+    if(std::filesystem::exists(part, ec)) {
+        existing_part_size = static_cast<std::uint64_t>(std::filesystem::file_size(part, ec));
+        if(ec) existing_part_size = 0;
+    }
+
+    bool part_already_complete = false;
     if(req.expected_size > 0) {
+        if(existing_part_size > req.expected_size) {
+            std::remove(part.c_str());
+            existing_part_size = 0;
+        }
+        part_already_complete = (existing_part_size == req.expected_size);
+
+        const std::uint64_t remaining =
+            req.expected_size > existing_part_size ? req.expected_size - existing_part_size : 0;
         const std::uint64_t freeb = FreeBytes("sdmc:/");
-        if(freeb > 0 && freeb < req.expected_size) {
+        if(freeb > 0 && freeb < remaining) {
             finish_fail("not enough free space on the SD card", true);
             return;
         }
@@ -95,15 +110,23 @@ void DownloadManager::run(Request req) {
     opts.password           = req.password;
     opts.connect_timeout_ms = 15000;
 
-    const net::DownloadResult dr = net::Download(
-        req.url, part, opts,
-        [this](const net::DownloadProgress &p) {
-            done.store(p.downloaded);
-            if(p.total > 0) {
-                total.store(p.total);
-            }
-        },
-        [this]() { return cancel_flag.load(); });
+    net::DownloadResult dr;
+    if(part_already_complete) {
+        dr.success = true;
+        dr.bytes   = existing_part_size;
+        done.store(existing_part_size);
+        total.store(existing_part_size);
+    } else {
+        dr = net::Download(
+            req.url, part, opts,
+            [this](const net::DownloadProgress &p) {
+                done.store(p.downloaded);
+                if(p.total > 0) {
+                    total.store(p.total);
+                }
+            },
+            [this]() { return cancel_flag.load(); });
+    }
 
     if(cancel_flag.load()) {
         std::lock_guard<std::mutex> lock(str_mtx);

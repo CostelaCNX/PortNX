@@ -93,13 +93,17 @@ bool ResolvePfs0Entries(const StreamInstallRequest &req,
                          std::string &out_error) {
     std::vector<std::uint8_t> buf(kPrefetchSize, 0);
     std::size_t recv = 0;
-    net::HttpStreamRange(req.url, 0, kPrefetchSize,
+    const net::StreamResult initial = net::HttpStreamRange(req.url, 0, kPrefetchSize,
         [&](const void *d, std::size_t n) -> bool {
             n = std::min(n, kPrefetchSize - recv);
             std::memcpy(buf.data() + recv, d, n);
             recv += n;
             return true;
         }, req.http_opts);
+    if(!initial.success) {
+        out_error = "Failed to fetch NSP header: " + initial.error;
+        return false;
+    }
 
     if(recv < sizeof(Pfs0Header)) { out_error = "File too small to be a valid NSP"; return false; }
 
@@ -174,8 +178,8 @@ bool ResolveXciEntries(const StreamInstallRequest &req,
                         std::vector<RemoteEntry> &out_entries,
                         std::string &out_error) {
     std::vector<std::uint8_t> xci_hdr_buf;
-    if(!RangeRead(req, 0, sizeof(XciHeaderFields), xci_hdr_buf)) {
-        out_error = "Failed to fetch XCI header";
+    if(!RangeRead(req, 0, sizeof(XciHeaderFields), xci_hdr_buf, &out_error)) {
+        out_error = "Failed to fetch XCI header: " + out_error;
         return false;
     }
 
@@ -188,8 +192,8 @@ bool ResolveXciEntries(const StreamInstallRequest &req,
     const std::uint64_t root_hfs0_abs = xci->hfs0_offset;
 
     std::vector<std::uint8_t> root_hdr_buf;
-    if(!RangeRead(req, root_hfs0_abs, kPrefetchSize, root_hdr_buf)) {
-        out_error = "Failed to fetch XCI root HFS0";
+    if(!RangeRead(req, root_hfs0_abs, kPrefetchSize, root_hdr_buf, &out_error)) {
+        out_error = "Failed to fetch XCI root HFS0: " + out_error;
         return false;
     }
 
@@ -213,8 +217,8 @@ bool ResolveXciEntries(const StreamInstallRequest &req,
     if(!secure_entry) { out_error = "XCI has no 'secure' partition"; return false; }
 
     std::vector<std::uint8_t> sec_hdr_buf;
-    if(!RangeRead(req, secure_entry->offset, kPrefetchSize, sec_hdr_buf)) {
-        out_error = "Failed to fetch XCI secure partition";
+    if(!RangeRead(req, secure_entry->offset, kPrefetchSize, sec_hdr_buf, &out_error)) {
+        out_error = "Failed to fetch XCI secure partition: " + out_error;
         return false;
     }
 
@@ -225,8 +229,8 @@ bool ResolveXciEntries(const StreamInstallRequest &req,
                 + static_cast<std::size_t>(shdr->file_count) * sizeof(Hfs0FileEntry)
                 + shdr->string_table_size;
             if(need > sec_hdr_buf.size()) {
-                if(!RangeRead(req, secure_entry->offset, need, sec_hdr_buf)) {
-                    out_error = "Failed to fetch complete XCI secure HFS0 table";
+                if(!RangeRead(req, secure_entry->offset, need, sec_hdr_buf, &out_error)) {
+                    out_error = "Failed to fetch complete XCI secure HFS0 table: " + out_error;
                     return false;
                 }
             }

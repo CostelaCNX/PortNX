@@ -2,6 +2,7 @@
 #include <net/CurlRuntime.hpp>
 
 #include <cstdio>
+#include <cstdlib>
 #include <sstream>
 #include <sys/stat.h>
 
@@ -29,6 +30,37 @@ int XferCancel(void *userdata, curl_off_t, curl_off_t, curl_off_t, curl_off_t) {
         return 0;
     }
     return c->cb() ? 1 : 0;
+}
+
+struct RangeHeaderControl {
+    bool require_partial = false;
+    bool rejected        = false;
+};
+
+size_t RangeHeaderCallback(char *buffer, size_t size, size_t nitems, void *userdata) {
+    const size_t total = size * nitems;
+    auto *ctrl = reinterpret_cast<RangeHeaderControl *>(userdata);
+    if(ctrl == nullptr || !ctrl->require_partial) {
+        return total;
+    }
+
+    const std::string line(buffer, total);
+    if(line.rfind("HTTP/", 0) != 0) {
+        return total;
+    }
+
+    const std::size_t code_pos = line.find(' ');
+    if(code_pos == std::string::npos || code_pos + 1 >= line.size()) {
+        return total;
+    }
+
+    char *end = nullptr;
+    const long code = std::strtol(line.c_str() + code_pos + 1, &end, 10);
+    if(code >= 200 && code < 300 && code != 206) {
+        ctrl->rejected = true;
+        return 0;
+    }
+    return total;
 }
 
 }
@@ -190,6 +222,12 @@ DownloadResult Download(const std::string &url,
         curl_easy_setopt(curl, CURLOPT_RESUME_FROM_LARGE, static_cast<curl_off_t>(resume_from));
     }
 
+    RangeHeaderControl header_ctrl{resume_from > 0, false};
+    if(header_ctrl.require_partial) {
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, RangeHeaderCallback);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_ctrl);
+    }
+
     if(opts.verify_tls) {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
@@ -229,7 +267,10 @@ DownloadResult Download(const std::string &url,
         }
     }
 
-    if(rc == CURLE_OK && (res.status_code == 200 || res.status_code == 206)) {
+    if(header_ctrl.rejected) {
+        res.error = "server does not support resume/range requests";
+    }
+    else if(rc == CURLE_OK && (res.status_code == 200 || res.status_code == 206)) {
         res.success = true;
     }
     else {
@@ -312,6 +353,7 @@ StreamResult HttpStreamRange(const std::string &url,
     }
 
     StreamControl ctrl{ std::move(write_fn), std::move(on_progress), opts.cancel };
+    RangeHeaderControl header_ctrl{size > 0 || offset > 0, false};
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -322,6 +364,10 @@ StreamResult HttpStreamRange(const std::string &url,
     curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StreamWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ctrl);
+    if(header_ctrl.require_partial) {
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, RangeHeaderCallback);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_ctrl);
+    }
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, opts.connect_timeout_ms);
     curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1L);
     curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
@@ -357,6 +403,10 @@ StreamResult HttpStreamRange(const std::string &url,
         res.error = "write callback aborted";
         return res;
     }
+    if(header_ctrl.rejected) {
+        res.error = "server does not support HTTP range requests";
+        return res;
+    }
     if(rc == CURLE_ABORTED_BY_CALLBACK) {
         res.error = "canceled";
         return res;
@@ -365,7 +415,8 @@ StreamResult HttpStreamRange(const std::string &url,
         res.error = curl_easy_strerror(rc);
         return res;
     }
-    if(res.status_code == 200 || res.status_code == 206) {
+    if((header_ctrl.require_partial && res.status_code == 206) ||
+       (!header_ctrl.require_partial && (res.status_code == 200 || res.status_code == 206))) {
         res.success = true;
     } else {
         std::ostringstream err;

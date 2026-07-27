@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <vector>
 
 #include <switch.h>
@@ -50,6 +51,19 @@ static_assert(sizeof(NczBlockHeader)  == 24, "NczBlockHeader must be 24 bytes");
 static constexpr std::uint64_t kMaxNczSections = 200'000;
 
 using SequentialWriteCallback = std::function<bool(const std::uint8_t *, std::size_t)>;
+
+static bool SeekFile(FILE *file, std::uint64_t offset, int origin = SEEK_SET) {
+    return ::fseeko(file, static_cast<off_t>(offset), origin) == 0;
+}
+
+static bool SeekFileRelative(FILE *file, off_t offset) {
+    return ::fseeko(file, offset, SEEK_CUR) == 0;
+}
+
+static std::uint64_t TellFile(FILE *file) {
+    const off_t pos = ::ftello(file);
+    return pos >= 0 ? static_cast<std::uint64_t>(pos) : 0;
+}
 
 struct NczCryptoState {
     std::vector<NczSectionEntry> sections;
@@ -150,7 +164,7 @@ bool IsCompressedNca(const std::string &container_path, std::uint64_t nca_offset
     FILE *file = std::fopen(container_path.c_str(), "rb");
     if(!file) return false;
     for(const std::size_t prefix : { kNczModernPrefix, kNczLegacyPrefix }) {
-        if(std::fseek(file, static_cast<long>(nca_offset + prefix), SEEK_SET) != 0) continue;
+        if(!SeekFile(file, nca_offset + prefix)) continue;
         std::uint64_t magic = 0;
         if(std::fread(&magic, sizeof(magic), 1, file) == 1 && magic == kNczSectionMagic) {
             std::fclose(file);
@@ -175,7 +189,7 @@ std::string DecompressNczToTemp(const std::string &container_path,
     const std::size_t max_prefix = std::min<std::uint64_t>(kNczModernPrefix, compressed_size);
     auto prefix_buf = std::make_unique<std::uint8_t[]>(max_prefix);
 
-    std::fseek(in, static_cast<long>(nca_offset), SEEK_SET);
+    SeekFile(in, nca_offset);
     if(std::fread(prefix_buf.get(), max_prefix, 1, in) != 1) {
         std::fclose(in);
         return {};
@@ -190,7 +204,7 @@ std::string DecompressNczToTemp(const std::string &container_path,
         if(candidate + sizeof(NczSectionHeader) <= max_prefix) {
             std::memcpy(&sec_header, prefix_buf.get() + candidate, sizeof(sec_header));
         } else {
-            std::fseek(in, static_cast<long>(nca_offset + candidate), SEEK_SET);
+            SeekFile(in, nca_offset + candidate);
             if(std::fread(&sec_header, sizeof(sec_header), 1, in) != 1) continue;
         }
         if(sec_header.magic == kNczSectionMagic && sec_header.section_count > 0
@@ -209,7 +223,7 @@ std::string DecompressNczToTemp(const std::string &container_path,
     NczCryptoState crypto;
     crypto.sections.resize(static_cast<std::size_t>(sec_header.section_count));
     const std::size_t sections_file_offset = ncz_header_offset + sizeof(NczSectionHeader);
-    std::fseek(in, static_cast<long>(nca_offset + sections_file_offset), SEEK_SET);
+    SeekFile(in, nca_offset + sections_file_offset);
     if(std::fread(crypto.sections.data(),
                    sizeof(NczSectionEntry) * crypto.sections.size(), 1, in) != 1) {
         std::fclose(in);
@@ -227,7 +241,7 @@ std::string DecompressNczToTemp(const std::string &container_path,
                                 && block_header.block_size_exponent <= 24;
 
     if(!is_block_based && read_block) {
-        std::fseek(in, -static_cast<long>(sizeof(block_header)), SEEK_CUR);
+        SeekFileRelative(in, -static_cast<off_t>(sizeof(block_header)));
     }
 
     mkdir(temp_dir.c_str(), 0755);
@@ -275,7 +289,7 @@ std::string DecompressNczToTemp(const std::string &container_path,
                 if(rem != 0) expected_dec = rem;
             }
             if(std::fread(comp_buf.get(), comp_size, 1, in) != 1) { ok = false; break; }
-            report_progress(static_cast<std::uint64_t>(std::ftell(in)));
+            report_progress(TellFile(in));
 
             std::size_t dec_size = expected_dec;
             if(comp_size < expected_dec) {
@@ -308,7 +322,7 @@ std::string DecompressNczToTemp(const std::string &container_path,
                 if(stop_callback && stop_callback()) { ok = false; break; }
                 const std::size_t n = std::fread(zstd_in.get(), 1, zstd_in_size, in);
                 if(n == 0) break;
-                report_progress(static_cast<std::uint64_t>(std::ftell(in)));
+                report_progress(TellFile(in));
                 ZSTD_inBuffer input = { zstd_in.get(), n, 0 };
                 while(ok && !frame_done && input.pos < input.size) {
                     if(stop_callback && stop_callback()) { ok = false; break; }
@@ -349,7 +363,7 @@ bool DecompressNczToStorage(const std::string &container_path,
 
     const std::size_t max_prefix = std::min<std::uint64_t>(kNczModernPrefix, compressed_size);
     auto prefix_buf = std::make_unique<std::uint8_t[]>(max_prefix);
-    std::fseek(in, static_cast<long>(nca_offset), SEEK_SET);
+    SeekFile(in, nca_offset);
     if(std::fread(prefix_buf.get(), max_prefix, 1, in) != 1) { std::fclose(in); return false; }
 
     std::size_t ncz_header_offset = 0, prefix_size = 0;
@@ -359,7 +373,7 @@ bool DecompressNczToStorage(const std::string &container_path,
         if(candidate + sizeof(NczSectionHeader) <= max_prefix) {
             std::memcpy(&sec_header, prefix_buf.get() + candidate, sizeof(sec_header));
         } else {
-            std::fseek(in, static_cast<long>(nca_offset + candidate), SEEK_SET);
+            SeekFile(in, nca_offset + candidate);
             if(std::fread(&sec_header, sizeof(sec_header), 1, in) != 1) continue;
         }
         if(sec_header.magic == kNczSectionMagic && sec_header.section_count > 0
@@ -387,7 +401,7 @@ bool DecompressNczToStorage(const std::string &container_path,
     NczCryptoState crypto;
     crypto.sections.resize(static_cast<std::size_t>(sec_header.section_count));
     const std::size_t sections_file_offset = ncz_header_offset + sizeof(NczSectionHeader);
-    std::fseek(in, static_cast<long>(nca_offset + sections_file_offset), SEEK_SET);
+    SeekFile(in, nca_offset + sections_file_offset);
     if(std::fread(crypto.sections.data(),
                    sizeof(NczSectionEntry) * crypto.sections.size(), 1, in) != 1) {
         std::fclose(in);
@@ -404,7 +418,7 @@ bool DecompressNczToStorage(const std::string &container_path,
                                 && block_header.block_size_exponent >= 14
                                 && block_header.block_size_exponent <= 24;
     if(!is_block_based && read_block) {
-        std::fseek(in, -static_cast<long>(sizeof(block_header)), SEEK_CUR);
+        SeekFileRelative(in, -static_cast<off_t>(sizeof(block_header)));
     }
 
     storage.DeletePlaceholder(nca_id);
@@ -443,7 +457,7 @@ bool DecompressNczToStorage(const std::string &container_path,
                 if(rem != 0) expected_dec = rem;
             }
             if(std::fread(comp_buf.get(), comp_size, 1, in) != 1) { ok = false; break; }
-            report_progress(static_cast<std::uint64_t>(std::ftell(in)));
+            report_progress(TellFile(in));
             std::size_t dec_size = expected_dec;
             if(comp_size < expected_dec) {
                 const std::size_t res = ZSTD_decompress(
@@ -475,7 +489,7 @@ bool DecompressNczToStorage(const std::string &container_path,
                 if(stop_callback && stop_callback()) { ok = false; break; }
                 const std::size_t n = std::fread(zstd_in.get(), 1, zstd_in_size, in);
                 if(n == 0) break;
-                report_progress(static_cast<std::uint64_t>(std::ftell(in)));
+                report_progress(TellFile(in));
                 ZSTD_inBuffer input = { zstd_in.get(), n, 0 };
                 while(ok && !frame_done && input.pos < input.size) {
                     if(stop_callback && stop_callback()) { ok = false; break; }

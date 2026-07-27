@@ -16,6 +16,7 @@
 #include <thread>
 #include <vector>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <switch.h>
 
@@ -25,6 +26,15 @@ namespace {
 constexpr std::size_t kStreamBufferSize    = 512 * 1024;
 constexpr std::size_t kPlaceholderFlushSize = 1 * 1024 * 1024;
 constexpr const char *kTempDir             = "sdmc:/switch/PortNX/tmp";
+
+bool SeekFile(FILE *file, std::uint64_t offset, int origin = SEEK_SET) {
+    return ::fseeko(file, static_cast<off_t>(offset), origin) == 0;
+}
+
+std::uint64_t TellFile(FILE *file) {
+    const off_t pos = ::ftello(file);
+    return pos >= 0 ? static_cast<std::uint64_t>(pos) : 0;
+}
 
 class BufferedPlaceholderWriter {
 public:
@@ -201,7 +211,7 @@ bool StreamNcaToStorage(FILE *file, std::uint64_t offset, std::uint64_t size,
     std::uint64_t nca_size = size;
 
     if(size >= kNcaHeaderSize) {
-        if(std::fseek(file, static_cast<long>(offset), SEEK_SET) != 0) return false;
+        if(!SeekFile(file, offset)) return false;
         if(std::fread(&raw_header, kNcaHeaderSize, 1, file) == 1 && header_key) {
             NcaHeader dec = raw_header;
             DecryptNcaHeader(&dec, kNcaHeaderSize, *header_key);
@@ -233,7 +243,7 @@ bool StreamNcaToStorage(FILE *file, std::uint64_t offset, std::uint64_t size,
         if(progress) progress(InstallProgress{written, nca_size, nca_name, nca_index, nca_count, false});
     }
 
-    if(std::fseek(file, static_cast<long>(offset + written), SEEK_SET) != 0) return false;
+    if(!SeekFile(file, offset + written)) return false;
 
     auto buf = std::make_unique<std::uint8_t[]>(kStreamBufferSize);
     while(written < nca_size) {
@@ -283,9 +293,9 @@ bool InstallSingleNca(FILE *file, const std::string &container_path,
         FILE *tmp_file = std::fopen(decompressed.c_str(), "rb");
         if(!tmp_file) { std::remove(decompressed.c_str()); return false; }
 
-        std::fseek(tmp_file, 0, SEEK_END);
-        const std::uint64_t decompressed_size = static_cast<std::uint64_t>(std::ftell(tmp_file));
-        std::fseek(tmp_file, 0, SEEK_SET);
+        SeekFile(tmp_file, 0, SEEK_END);
+        const std::uint64_t decompressed_size = TellFile(tmp_file);
+        SeekFile(tmp_file, 0);
 
         bool ok = StreamNcaToStorage(tmp_file, 0, decompressed_size,
                                       storage, nca_id, progress, nca_index, nca_count,
@@ -345,9 +355,9 @@ InstallResult InstallFromEntries(FILE *file,
         const auto *cert_e = cert_entries[i];
         auto tik_buf  = std::make_unique<std::uint8_t[]>(tik_e->size);
         auto cert_buf = std::make_unique<std::uint8_t[]>(cert_e->size);
-        std::fseek(file, static_cast<long>(tik_e->offset), SEEK_SET);
+        SeekFile(file, tik_e->offset);
         if(std::fread(tik_buf.get(), tik_e->size, 1, file) != 1) continue;
-        std::fseek(file, static_cast<long>(cert_e->offset), SEEK_SET);
+        SeekFile(file, cert_e->offset);
         if(std::fread(cert_buf.get(), cert_e->size, 1, file) != 1) continue;
         ImportTicket(tik_buf.get(), tik_e->size, cert_buf.get(), cert_e->size);
     }
