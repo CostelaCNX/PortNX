@@ -53,8 +53,6 @@ Config Config::Load() {
 
         if(j.contains("install_to_nand") && j["install_to_nand"].is_boolean())
             c.install_to_nand = j["install_to_nand"].get<bool>();
-        if(j.contains("force_reinstall") && j["force_reinstall"].is_boolean())
-            c.force_reinstall = j["force_reinstall"].get<bool>();
         if(j.contains("language") && j["language"].is_string())
             c.language = j["language"].get<std::string>();
     }
@@ -74,7 +72,6 @@ bool Config::Save() const {
     json j;
     j["server_url"]      = server_url;
     j["install_to_nand"] = install_to_nand;
-    j["force_reinstall"] = force_reinstall;
     j["language"]        = language;
 
     std::ofstream out(Path(), std::ios::trunc);

@@ -38,7 +38,6 @@
         "destination":      "Install to",
         "sd_card":          "SD Card",
         "nand":             "NAND (Internal)",
-        "force_reinstall":  "Force reinstall",
         "on":               "On",
         "off":              "Off",
         "language":         "Language",

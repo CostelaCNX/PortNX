@@ -38,7 +38,6 @@
         "destination":      "Instalar em",
         "sd_card":          "Cartão SD",
         "nand":             "NAND (Interna)",
-        "force_reinstall":  "Forçar reinstalação",
         "on":               "Ativado",
         "off":              "Desativado",
         "language":         "Idioma",

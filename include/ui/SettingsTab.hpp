@@ -34,7 +34,6 @@ class SettingsTab {
         pu::ui::elm::MenuItem::Ref lang_item_;
         pu::ui::elm::MenuItem::Ref url_item_;
         pu::ui::elm::MenuItem::Ref storage_item_;
-        pu::ui::elm::MenuItem::Ref reinstall_item_;
 
         void UpdateItemLabels();
 

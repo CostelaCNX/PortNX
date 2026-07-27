@@ -11,7 +11,6 @@ struct Config {
 
     // Install options
     bool install_to_nand  = false;  // false = SD card (default)
-    bool force_reinstall  = false;
 
     static Config Load();
     std::string EffectiveServerUrl() const;

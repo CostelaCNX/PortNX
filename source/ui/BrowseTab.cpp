@@ -715,7 +715,7 @@ void BrowseTab::ActivateSelected() {
         req.install_config.dest_storage_id = config->install_to_nand
             ? NcmStorageId_BuiltInUser : NcmStorageId_SdCard;
         req.install_config.ignore_req_fw   = true;
-        req.install_config.reinstall_ncas  = config->force_reinstall;
+        req.install_config.reinstall_ncas  = false;
         installer->enqueueStream(req);
     } else {
         mkdir("sdmc:/switch/PortNX/downloads", 0777);

@@ -31,12 +31,10 @@ void SettingsTab::AddElementsTo(pu::ui::Layout *layout) {
     lang_item_      = pu::ui::elm::MenuItem::New("");
     url_item_       = pu::ui::elm::MenuItem::New("");
     storage_item_   = pu::ui::elm::MenuItem::New("");
-    reinstall_item_ = pu::ui::elm::MenuItem::New("");
 
     lang_item_->SetColor(kTextClr);
     url_item_->SetColor(kTextClr);
     storage_item_->SetColor(kTextClr);
-    reinstall_item_->SetColor(kTextClr);
 
     constexpr u64 kActivate = HidNpadButton_A | pu::ui::TouchPseudoKey;
 
@@ -73,18 +71,11 @@ void SettingsTab::AddElementsTo(pu::ui::Layout *layout) {
         UpdateItemLabels();
     }, kActivate);
 
-    reinstall_item_->AddOnKey([this]() {
-        config_->force_reinstall = !config_->force_reinstall;
-        config_->Save();
-        UpdateItemLabels();
-    }, kActivate);
-
     UpdateItemLabels();
 
     menu_->AddItem(lang_item_);
     menu_->AddItem(url_item_);
     menu_->AddItem(storage_item_);
-    menu_->AddItem(reinstall_item_);
     menu_->ForceReloadItems();
 
     layout->Add(menu_);
@@ -132,10 +123,6 @@ void SettingsTab::UpdateItemLabels() {
                            (config_->install_to_nand
                                 ? pinx::i18n::tr("settings.nand")
                                 : pinx::i18n::tr("settings.sd_card")));
-    reinstall_item_->SetName(pinx::i18n::tr("settings.force_reinstall") + "  |  " +
-                             (config_->force_reinstall
-                                  ? pinx::i18n::tr("settings.on")
-                                  : pinx::i18n::tr("settings.off")));
     if (menu_) menu_->ForceReloadItems();
 }
 
