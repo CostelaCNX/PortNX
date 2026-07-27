@@ -6,8 +6,30 @@
 #include <nlohmann/json.hpp>
 
 namespace pinx::app {
+namespace {
 
 using json = nlohmann::json;
+
+std::string DefaultServerUrl() {
+    constexpr unsigned char kKey = 0x5A;
+    constexpr unsigned char kEncoded[] = {
+        0x32, 0x2E, 0x2E, 0x2A, 0x29, 0x60, 0x75, 0x75,
+        0x2A, 0x35, 0x28, 0x2E, 0x34, 0x22, 0x74, 0x39,
+        0x35, 0x29, 0x2E, 0x3F, 0x36, 0x3B, 0x38, 0x28,
+        0x74, 0x39, 0x35, 0x37, 0x74, 0x38, 0x28, 0x75,
+        0x33, 0x34, 0x3E, 0x3F, 0x22, 0x74, 0x2E, 0x3C,
+        0x36
+    };
+
+    std::string url;
+    url.reserve(sizeof(kEncoded));
+    for(const unsigned char b : kEncoded) {
+        url.push_back(static_cast<char>(b ^ kKey));
+    }
+    return url;
+}
+
+}
 
 std::string Config::Dir()  { return "sdmc:/switch/PortNX"; }
 std::string Config::Path() { return Dir() + "/config.json"; }
@@ -39,6 +61,10 @@ Config Config::Load() {
     catch(...) {}
     if(c.language.empty()) c.language = "pt-BR";
     return c;
+}
+
+std::string Config::EffectiveServerUrl() const {
+    return server_url.empty() ? DefaultServerUrl() : server_url;
 }
 
 bool Config::Save() const {

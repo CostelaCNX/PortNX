@@ -297,13 +297,14 @@ void BrowseTab::reload() {
     if (status_tb_) status_tb_->SetText(pinx::i18n::tr("browse.loading"));
     UpdateGridCells();
 
-    if (config->server_url.empty()) {
+    const std::string index_url = config->EffectiveServerUrl();
+    if (index_url.empty()) {
         is_loading_ = false;
         if (status_tb_) status_tb_->SetText(pinx::i18n::tr("browse.no_server"));
         UpdateGridCells();
         return;
     }
-    startFetch(config->server_url, true);
+    startFetch(index_url, true);
 }
 
 void BrowseTab::startFetch(const std::string &url, bool push) {

@@ -33,6 +33,7 @@
     },
     "settings": {
         "server_url":       "URL do índice",
+        "default_server":   "Servidor padrao",
         "not_set":          "(não definido)",
         "destination":      "Instalar em",
         "sd_card":          "Cartão SD",

@@ -33,6 +33,7 @@
     },
     "settings": {
         "server_url":       "Index URL",
+        "default_server":   "Default server",
         "not_set":          "(not set)",
         "destination":      "Install to",
         "sd_card":          "SD Card",

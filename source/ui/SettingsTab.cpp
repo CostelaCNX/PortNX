@@ -13,7 +13,7 @@ std::string LangLabel(const std::string &lang) {
 }
 
 std::string UrlLabel(const std::string &url) {
-    return url.empty() ? pinx::i18n::tr("settings.not_set") : url;
+    return url.empty() ? pinx::i18n::tr("settings.default_server") : url;
 }
 
 }

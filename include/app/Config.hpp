@@ -14,6 +14,7 @@ struct Config {
     bool force_reinstall  = false;
 
     static Config Load();
+    std::string EffectiveServerUrl() const;
     bool Save() const;
 
     static std::string Dir();
