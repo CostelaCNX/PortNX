@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PortNX — Nintendo Switch Port Installer</title>
-<meta name="description" content="Homebrew para Nintendo Switch que instala ports de um catálogo remoto. UI moderna com Plutonium, grid/list view, fila inteligente e i18n PT-BR/EN.">
-<meta property="og:title" content="PortNX v2.0.0">
+<meta name="description" content="Homebrew para Nintendo Switch que instala ports com UI moderna em Plutonium, grid/list view e fila inteligente.">
+<meta property="og:title" content="PortNX v2.0.1">
 <meta property="og:description" content="Instale ports no Switch com uma interface moderna e intuitiva.">
 <meta property="og:type" content="website">
+<meta property="og:image" content="icon.jpg">
+<link rel="icon" href="icon.jpg">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -45,11 +47,39 @@
     display: flex; align-items: center; justify-content: space-between;
     height: 56px;
   }
-  .nav-logo { font-weight: 700; font-size: 1.1rem; letter-spacing: .04em; color: var(--text); text-decoration: none; }
+  .nav-logo {
+    display: inline-flex; align-items: center; gap: .55rem;
+    font-weight: 700; font-size: 1.1rem; letter-spacing: .04em;
+    color: var(--text); text-decoration: none;
+  }
   .nav-logo span { color: #ff4444; font-weight: 800; }
+  .nav-logo img { width: 30px; height: 30px; border-radius: 7px; object-fit: cover; }
+  .nav-actions { display: flex; align-items: center; gap: 1.2rem; }
   nav ul { list-style: none; display: flex; gap: 1.5rem; }
   nav a { color: var(--muted); text-decoration: none; font-size: .9rem; transition: color .2s; }
   nav a:hover { color: var(--text); }
+  .lang-switch {
+    display: inline-flex; align-items: center; gap: .25rem;
+    padding: .2rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .lang-btn {
+    min-width: 38px;
+    height: 28px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font: 700 .75rem var(--font);
+    cursor: pointer;
+  }
+  .lang-btn:hover,
+  .lang-btn.active {
+    background: rgba(196,0,0,.22);
+    color: var(--text);
+  }
 
   /* ── HERO ── */
   .hero {
@@ -66,6 +96,15 @@
     font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
     padding: .3rem .9rem; border-radius: 99px;
     margin-bottom: 1.5rem;
+  }
+  .app-icon {
+    width: 112px; height: 112px;
+    border-radius: 22px;
+    object-fit: cover;
+    display: block;
+    margin: 0 auto 1.4rem;
+    box-shadow: 0 18px 44px rgba(196,0,0,.28);
+    border: 1px solid rgba(255,255,255,.12);
   }
   .hero h1 {
     font-size: clamp(2.4rem, 6vw, 4rem);
@@ -245,6 +284,8 @@
   /* ── RESPONSIVE NAV ── */
   @media (max-width: 600px) {
     nav ul { display: none; }
+    nav { padding: 0 1rem; }
+    .nav-actions { gap: .6rem; }
   }
 
   /* ── KEYBOARD HINTS ── */
@@ -266,35 +307,43 @@
 
 <!-- NAV -->
 <nav>
-  <a class="nav-logo" href="#"><span>Port</span>NX</a>
-  <ul>
-    <li><a href="#features">Recursos</a></li>
-    <li><a href="#howto">Como funciona</a></li>
-    <li><a href="#install">Instalação</a></li>
-    <li><a href="#catalog">Catálogo</a></li>
-    <li><a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank">Download</a></li>
-  </ul>
+  <a class="nav-logo" href="#"><img src="icon.jpg" alt="PortNX"><span>Port</span>NX</a>
+  <div class="nav-actions">
+    <ul>
+      <li><a href="#features" data-i18n="nav.features">Recursos</a></li>
+      <li><a href="#howto" data-i18n="nav.howto">Como funciona</a></li>
+      <li><a href="#install" data-i18n="nav.install">Instalação</a></li>
+      <li><a href="#catalog" data-i18n="nav.catalog">Catálogo</a></li>
+      <li><a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank" data-i18n="nav.download">Download</a></li>
+    </ul>
+    <div class="lang-switch" aria-label="Language">
+      <button class="lang-btn active" type="button" data-lang="pt">PT</button>
+      <button class="lang-btn" type="button" data-lang="en">EN</button>
+      <button class="lang-btn" type="button" data-lang="es">ES</button>
+    </div>
+  </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="badge">Nintendo Switch Homebrew · v2.0.0</div>
-  <h1>Instale ports no Switch<br><span>com uma UI moderna</span></h1>
-  <p>Homebrew para Nintendo Switch que faz browse e instalação de ports NSP/NSZ/XCI/XCZ a partir de um catálogo JSON remoto — interface Plutonium com grid/list view, fila inteligente e i18n PT-BR/EN.</p>
+  <img class="app-icon" src="icon.jpg" alt="PortNX">
+  <div class="badge" data-i18n="hero.badge">Nintendo Switch Homebrew · v2.0.1</div>
+  <h1 data-i18n-html="hero.title">Instale ports no Switch<br><span>com uma UI moderna</span></h1>
+  <p data-i18n="hero.copy">Homebrew para Nintendo Switch que navega, baixa e instala ports com interface Plutonium, visual em grid/list view e fila inteligente.</p>
   <div class="btn-group">
     <a class="btn btn-primary" href="https://github.com/CostelaCNX/PortNX/releases" target="_blank">
-      ⬇ Download NRO v2.0.0
+      <span data-i18n="hero.download">⬇ Download NRO v2.0.1</span>
     </a>
     <a class="btn btn-secondary" href="https://github.com/CostelaCNX/PortNX" target="_blank">
-      ⌥ Ver no GitHub
+      <span data-i18n="hero.github">⌥ Ver no GitHub</span>
     </a>
   </div>
   <div class="tags">
     <span class="tag">C++20</span>
     <span class="tag">Plutonium SDL2</span>
     <span class="tag">Atmosphere CFW</span>
-    <span class="tag">NSZ / NSP / XCI</span>
-    <span class="tag">PT-BR / EN</span>
+    <span class="tag">Stream install</span>
+    <span class="tag">Queue manager</span>
     <span class="tag">Open Source</span>
   </div>
 </section>
@@ -302,45 +351,45 @@
 <!-- FEATURES -->
 <section id="features">
   <div class="container">
-    <div class="section-label">Recursos</div>
-    <h2>Tudo que você precisa</h2>
-    <p class="section-sub">Interface moderna e intuitiva para instalar ports de forma rápida e organizada.</p>
+    <div class="section-label" data-i18n="features.label">Recursos</div>
+    <h2 data-i18n="features.title">Tudo que você precisa</h2>
+    <p class="section-sub" data-i18n="features.copy">Interface moderna e intuitiva para instalar ports de forma rápida e organizada.</p>
     <div class="features-grid">
 
       <div class="feature-card">
         <div class="icon icon-blue">🏠</div>
-        <h3>Home screen intuitiva</h3>
-        <p>Três cards SNES-palette (Browse, Fila, Ajustes) com navegação por analog stick e touch.</p>
+        <h3 data-i18n="features.home.title">Home screen intuitiva</h3>
+        <p data-i18n="features.home.copy">Três cards SNES-palette (Browse, Fila, Ajustes) com navegação por analog stick e touch.</p>
       </div>
 
       <div class="feature-card">
         <div class="icon icon-red">📊</div>
-        <h3>Grid ou List view</h3>
-        <p>Browse em grade 3×2 (256×256 ícones) ou lista full-width. Toggle com botão Y, L/R para paginar.</p>
+        <h3 data-i18n="features.grid.title">Grid ou List view</h3>
+        <p data-i18n="features.grid.copy">Browse em grade 3×2 (256×256 ícones) ou lista full-width. Toggle com botão Y, L/R para paginar.</p>
       </div>
 
       <div class="feature-card">
         <div class="icon icon-green">⚡</div>
-        <h3>Stream install</h3>
-        <p>Instala NSZ/NSP/XCI/XCZ direto via NCM + ES, sem armazenamento intermediário no SD.</p>
+        <h3 data-i18n="features.stream.title">Stream install</h3>
+        <p data-i18n="features.stream.copy">Instala ports direto pelo sistema do console, sem armazenamento intermediário no SD.</p>
       </div>
 
       <div class="feature-card">
         <div class="icon icon-blue">📥</div>
-        <h3>Fila inteligente</h3>
-        <p>Adicione vários títulos à fila. Pressione X para pular o item atual — próximo começa automaticamente. Re-adicione a qualquer hora.</p>
+        <h3 data-i18n="features.queue.title">Fila inteligente</h3>
+        <p data-i18n="features.queue.copy">Adicione vários títulos à fila. Pressione X para pular o item atual — próximo começa automaticamente. Re-adicione a qualquer hora.</p>
       </div>
 
       <div class="feature-card">
-        <div class="icon icon-green">🌐</div>
-        <h3>Multilíngue</h3>
-        <p>Interface completamente traduzida. PT-BR e English, switcháveis em Ajustes sem reiniciar.</p>
+        <div class="icon icon-green">🎮</div>
+        <h3 data-i18n="features.controls.title">Controles completos</h3>
+        <p data-i18n="features.controls.copy">Navegação por D-Pad, analog sticks, botões e touch em todas as telas principais.</p>
       </div>
 
       <div class="feature-card">
         <div class="icon icon-gray">☑</div>
-        <h3>Cache inteligente</h3>
-        <p>Ícones são cacheados localmente. Índices remotos suportam JSON puro ou criptografado (TINFOIL).</p>
+        <h3 data-i18n="features.cache.title">Cache inteligente</h3>
+        <p data-i18n="features.cache.copy">Ícones são cacheados localmente. Índices remotos suportam JSON puro ou criptografado (TINFOIL).</p>
       </div>
 
     </div>
@@ -350,56 +399,53 @@
 <!-- HOWTO -->
 <section id="howto" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
   <div class="container">
-    <div class="section-label">Como funciona</div>
-    <h2>O fluxo do app</h2>
-    <p class="section-sub">Desde o launch até a instalação, entenda cada tela e o que você controla.</p>
+    <div class="section-label" data-i18n="howto.label">Como funciona</div>
+    <h2 data-i18n="howto.title">O fluxo do app</h2>
+    <p class="section-sub" data-i18n="howto.copy">Desde o launch até a instalação, entenda cada tela e o que você controla.</p>
 
     <div class="howto-grid">
       <div class="howto-card">
-        <h3>🏠 Home Screen</h3>
-        <p>Ao abrir o PortNX, você vê três cards coloridos:</p>
+        <h3 data-i18n="howto.home.title">🏠 Home Screen</h3>
+        <p data-i18n="howto.home.copy">Ao abrir o PortNX, você vê três cards coloridos:</p>
         <ul>
-          <li><strong>Browse</strong> (vermelho): navegue catálogos</li>
-          <li><strong>Fila</strong> (azul): acompanhe downloads/installs</li>
-          <li><strong>Ajustes</strong> (verde): configure URL e idioma</li>
+          <li data-i18n-html="howto.home.item1"><strong>Browse</strong> (vermelho): navegue catálogos</li>
+          <li data-i18n-html="howto.home.item2"><strong>Fila</strong> (azul): acompanhe downloads/installs</li>
+          <li data-i18n-html="howto.home.item3"><strong>Ajustes</strong> (verde): configure destino e opções de instalação</li>
         </ul>
-        <p>Navegue com <span class="key-hint">D-Pad</span> / <span class="key-hint">Sticks</span> ou toque. Pressione <span class="key-hint">A</span> para entrar.</p>
+        <p data-i18n-html="howto.home.nav">Navegue com <span class="key-hint">D-Pad</span> / <span class="key-hint">Sticks</span> ou toque. Pressione <span class="key-hint">A</span> para entrar.</p>
       </div>
 
       <div class="howto-card">
-        <h3>⚙️ Ajustes</h3>
-        <p>Configure o app uma única vez:</p>
+        <h3 data-i18n="howto.settings.title">⚙️ Ajustes</h3>
+        <p data-i18n="howto.settings.copy">Configure o app uma única vez:</p>
         <ul>
-          <li><strong>URL do índice</strong>: seu servidor JSON</li>
-          <li><strong>Destino da instalação</strong>: SD card ou NAND</li>
-          <li><strong>Força reinstalação</strong>: reinstale títulos já presentes</li>
-          <li><strong>Idioma</strong>: PT-BR ou English</li>
+          <li data-i18n-html="howto.settings.item1"><strong>Destino da instalação</strong>: SD card ou NAND</li>
         </ul>
-        <p>Navegue com <span class="key-hint">Up</span>/<span class="key-hint">Down</span> ou toque. Pressione <span class="key-hint">A</span> para editar.</p>
+        <p data-i18n-html="howto.settings.nav">Navegue com <span class="key-hint">Up</span>/<span class="key-hint">Down</span> ou toque. Pressione <span class="key-hint">A</span> para editar.</p>
       </div>
 
       <div class="howto-card">
-        <h3>🗂 Browse</h3>
-        <p>Veja todos os ports disponíveis no seu catálogo:</p>
+        <h3 data-i18n="howto.browse.title">🗂 Browse</h3>
+        <p data-i18n="howto.browse.copy">Veja todos os ports disponíveis no seu catálogo:</p>
         <ul>
-          <li><strong>Grid (3×2)</strong>: visualização por ícone com nome e metadata</li>
-          <li><strong>List</strong>: visualização em linhas, compacta com ícone pequeno</li>
-          <li>Toggle entre os dois com <span class="key-hint">Y</span></li>
-          <li>Pagine com <span class="key-hint">L</span>/<span class="key-hint">R</span> ou <span class="key-hint">Up</span>/<span class="key-hint">Down</span> (wrap automático)</li>
+          <li data-i18n-html="howto.browse.item1"><strong>Grid (3×2)</strong>: visualização por ícone com nome e metadata</li>
+          <li data-i18n-html="howto.browse.item2"><strong>List</strong>: visualização em linhas, compacta com ícone pequeno</li>
+          <li data-i18n-html="howto.browse.item3">Toggle entre os dois com <span class="key-hint">Y</span></li>
+          <li data-i18n-html="howto.browse.item4">Pagine com <span class="key-hint">L</span>/<span class="key-hint">R</span> ou <span class="key-hint">Up</span>/<span class="key-hint">Down</span> (wrap automático)</li>
         </ul>
-        <p>Selecione um title com <span class="key-hint">A</span> para queuer download + instalação.</p>
+        <p data-i18n-html="howto.browse.nav">Selecione um title com <span class="key-hint">A</span> para queuer download + instalação.</p>
       </div>
 
       <div class="howto-card">
-        <h3>📥 Fila</h3>
-        <p>Acompanhe downloads e instalações em tempo real:</p>
+        <h3 data-i18n="howto.queue.title">📥 Fila</h3>
+        <p data-i18n="howto.queue.copy">Acompanhe downloads e instalações em tempo real:</p>
         <ul>
-          <li>Mostra o item atual com barra de progresso e porcentagem</li>
-          <li>Lista os títulos ainda na fila (máximo 5 visíveis)</li>
-          <li>Histórico de instalações bem-sucedidas</li>
-          <li>Pressione <span class="key-hint">X</span> para cancelar o item atual (próximo inicia automaticamente)</li>
+          <li data-i18n="howto.queue.item1">Mostra o item atual com barra de progresso e porcentagem</li>
+          <li data-i18n="howto.queue.item2">Lista os títulos ainda na fila (máximo 5 visíveis)</li>
+          <li data-i18n="howto.queue.item3">Histórico de instalações bem-sucedidas</li>
+          <li data-i18n-html="howto.queue.item4">Pressione <span class="key-hint">X</span> para cancelar o item atual (próximo inicia automaticamente)</li>
         </ul>
-        <p>Voltando ao Browse, você pode re-adicionar um item cancelado.</p>
+        <p data-i18n="howto.queue.nav">Voltando ao Browse, você pode re-adicionar um item cancelado.</p>
       </div>
     </div>
   </div>
@@ -408,37 +454,37 @@
 <!-- INSTALL -->
 <section id="install" style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
   <div class="container">
-    <div class="section-label">Instalação</div>
-    <h2>Pronto em 4 passos</h2>
-    <p class="section-sub">Requer um Nintendo Switch com Atmosphere CFW instalado.</p>
+    <div class="section-label" data-i18n="install.label">Instalação</div>
+    <h2 data-i18n="install.title">Pronto em 4 passos</h2>
+    <p class="section-sub" data-i18n="install.copy">Requer um Nintendo Switch com Atmosphere CFW instalado.</p>
     <div class="install-grid">
       <div>
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-text">
-            <h4>Baixe o PortNX.nro</h4>
-            <p>Na página de <a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank" style="color:var(--accent);">releases do GitHub</a>, baixe a versão mais recente do <code>PortNX.nro</code>.</p>
+            <h4 data-i18n="install.step1.title">Baixe o PortNX.nro</h4>
+            <p data-i18n-html="install.step1.copy">Na página de <a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank" style="color:var(--accent);">releases do GitHub</a>, baixe a versão mais recente do <code>PortNX.nro</code>.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-text">
-            <h4>Copie para o SD</h4>
-            <p>Coloque o arquivo em <code>sdmc:/switch/PortNX/PortNX.nro</code>.</p>
+            <h4 data-i18n="install.step2.title">Copie para o SD</h4>
+            <p data-i18n-html="install.step2.copy">Coloque o arquivo em <code>sdmc:/switch/PortNX/PortNX.nro</code>.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-text">
-            <h4>Abra pelo hbmenu</h4>
-            <p>No hbmenu do Switch (segure <strong>R</strong> + rode um jogo), selecione PortNX.</p>
+            <h4 data-i18n="install.step3.title">Abra pelo hbmenu</h4>
+            <p data-i18n-html="install.step3.copy">No hbmenu do Switch (segure <strong>R</strong> + rode um jogo), selecione PortNX.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-text">
-            <h4>Configure e instale</h4>
-            <p>Em <strong>Ajustes → URL do índice</strong>, insira a URL do seu servidor JSON. Agora vá para <strong>Browse</strong> e comece!</p>
+            <h4 data-i18n="install.step4.title">Navegue e instale</h4>
+            <p data-i18n-html="install.step4.copy">Abra o <strong>Browse</strong>, escolha um port e acompanhe tudo pela <strong>Fila</strong>.</p>
           </div>
         </div>
       </div>
@@ -455,11 +501,10 @@
     └── *.jpg</pre>
         </div>
         <div style="margin-top:1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;font-size:.88rem;color:var(--muted);">
-          <strong style="color:var(--text);">⚠ Requisitos</strong><br><br>
+          <strong style="color:var(--text);" data-i18n="install.req.title">⚠ Requisitos</strong><br><br>
           <ul class="req-list">
-            <li>Nintendo Switch com Atmosphere CFW</li>
-            <li>prod.keys acessível ao homebrew (para NSZ/XCZ)</li>
-            <li>Servidor com catálogo JSON acessível via HTTP/HTTPS</li>
+            <li data-i18n="install.req.item1">Nintendo Switch com Atmosphere CFW</li>
+            <li data-i18n="install.req.item2">prod.keys acessível ao homebrew</li>
           </ul>
         </div>
       </div>
@@ -470,13 +515,13 @@
 <!-- CATALOG -->
 <section id="catalog" class="catalog-section">
   <div class="container">
-    <div class="section-label">Catálogo</div>
-    <h2>Formato do índice JSON</h2>
-    <p class="section-sub">O PortNX usa o formato padrão do Tinfoil. Qualquer servidor compatível com Tinfoil funciona. Abaixo um exemplo mínimo e um completo.</p>
+    <div class="section-label" data-i18n="catalog.label">Catálogo</div>
+    <h2 data-i18n="catalog.title">Formato do índice JSON</h2>
+    <p class="section-sub" data-i18n="catalog.copy">O PortNX usa o formato padrão do Tinfoil. Qualquer servidor compatível com Tinfoil funciona. Abaixo um exemplo mínimo e um completo.</p>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
       <div>
-        <p style="font-size:.85rem;color:var(--muted);margin-bottom:.6rem;">Mínimo</p>
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:.6rem;" data-i18n="catalog.min">Mínimo</p>
         <div class="code-wrap">
           <div class="code-header">
             <div class="code-dots"><span></span><span></span><span></span></div>
@@ -485,7 +530,7 @@
           <pre>{
   <span class="key">"files"</span>: [
     {
-      <span class="key">"url"</span>: <span class="str">"https://example.com/Port.nsz"</span>,
+      <span class="key">"url"</span>: <span class="str">"https://example.com/Port.pkg"</span>,
       <span class="key">"size"</span>: <span class="num">1234567890</span>
     }
   ]
@@ -493,7 +538,7 @@
         </div>
       </div>
       <div>
-        <p style="font-size:.85rem;color:var(--muted);margin-bottom:.6rem;">Completo</p>
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:.6rem;" data-i18n="catalog.full">Completo</p>
         <div class="code-wrap">
           <div class="code-header">
             <div class="code-dots"><span></span><span></span><span></span></div>
@@ -502,7 +547,7 @@
           <pre>{
   <span class="key">"files"</span>: [
     {
-      <span class="key">"url"</span>: <span class="str">"https://cdn.example.com/Port.nsz"</span>,
+      <span class="key">"url"</span>: <span class="str">"https://cdn.example.com/Port.pkg"</span>,
       <span class="key">"name"</span>: <span class="str">"Game Name"</span>,
       <span class="key">"size"</span>: <span class="num">1234567890</span>,
       <span class="key">"version"</span>: <span class="str">"1.0.0"</span>,
@@ -518,9 +563,9 @@
     </div>
 
     <div style="margin-top:1.5rem;background:rgba(196,0,0,.08);border:1px solid rgba(196,0,0,.3);border-radius:var(--radius);padding:1.2rem;font-size:.9rem;">
-      <strong style="color:#ff6666;">🔐 Índice criptografado</strong> &nbsp;—&nbsp;
-      O PortNX também aceita índices no formato TINFOIL (binário com cabeçalho <code>TINFOIL</code>).
-      Para gerar índices criptografados compatíveis, use as ferramentas em
+      <strong style="color:#ff6666;" data-i18n="catalog.encrypted.title">🔐 Índice criptografado</strong> &nbsp;—&nbsp;
+      <span data-i18n-html="catalog.encrypted.copy">O PortNX também aceita índices no formato TINFOIL (binário com cabeçalho <code>TINFOIL</code>).</span>
+      <span data-i18n="catalog.encrypted.tools">Para gerar índices criptografados compatíveis, use as ferramentas em</span>
       <a href="https://github.com/CostelaCNX/PortNX/tree/master/tools" style="color:#ff6666;font-weight:600;">tools/</a>.
     </div>
   </div>
@@ -529,13 +574,13 @@
 <!-- TOOLS -->
 <section style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
   <div class="container">
-    <div class="section-label">Ferramentas</div>
-    <h2>Criptografar seu índice</h2>
-    <p class="section-sub">Se você quer servir um catálogo privado ou seguro, use o script Python em <code>tools/</code> para encriptar seu índice JSON.</p>
+    <div class="section-label" data-i18n="tools.label">Ferramentas</div>
+    <h2 data-i18n="tools.title">Criptografar seu índice</h2>
+    <p class="section-sub" data-i18n-html="tools.copy">Se você quer servir um catálogo privado ou seguro, use o script Python em <code>tools/</code> para encriptar seu índice JSON.</p>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:2rem;">
       <div>
-        <h3 style="font-size:1rem;margin-bottom:1rem;">Dependências</h3>
+        <h3 style="font-size:1rem;margin-bottom:1rem;" data-i18n="tools.deps">Dependências</h3>
         <div class="code-wrap" style="max-width:100%;">
           <div class="code-header">
             <div class="code-dots"><span></span><span></span><span></span></div>
@@ -545,7 +590,7 @@
         </div>
       </div>
       <div>
-        <h3 style="font-size:1rem;margin-bottom:1rem;">Encriptar</h3>
+        <h3 style="font-size:1rem;margin-bottom:1rem;" data-i18n="tools.encrypt">Encriptar</h3>
         <div class="code-wrap" style="max-width:100%;">
           <div class="code-header">
             <div class="code-dots"><span></span><span></span><span></span></div>
@@ -560,13 +605,12 @@ python encrypt_index.py \
     </div>
 
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;font-size:.95rem;line-height:1.8;">
-      <p style="margin-bottom:1rem;"><strong style="color:#ff6666;">Como usar:</strong></p>
+      <p style="margin-bottom:1rem;"><strong style="color:#ff6666;" data-i18n="tools.how">Como usar:</strong></p>
       <ol style="margin-left:1.5rem;color:var(--muted);">
-        <li style="margin-bottom:.6rem;">Coloque <code>public_key.pem</code> na mesma pasta do script</li>
-        <li style="margin-bottom:.6rem;">Execute <code>python encrypt_index.py seu_index.json</code> ou com flags <code>--compress</code> e <code>--out</code></li>
-        <li style="margin-bottom:.6rem;">Escolha o formato: <span class="key-hint">zstd</span> (melhor ratio), <span class="key-hint">zlib</span> (compatível) ou <span class="key-hint">none</span> (apenas criptografia)</li>
-        <li>Upload o arquivo <code>.tfl</code> ao seu servidor HTTP/HTTPS</li>
-        <li>Cole a URL do arquivo em PortNX → Ajustes → URL do índice</li>
+        <li style="margin-bottom:.6rem;" data-i18n-html="tools.item1">Coloque <code>public_key.pem</code> na mesma pasta do script</li>
+        <li style="margin-bottom:.6rem;" data-i18n-html="tools.item2">Execute <code>python encrypt_index.py seu_index.json</code> ou com flags <code>--compress</code> e <code>--out</code></li>
+        <li style="margin-bottom:.6rem;" data-i18n-html="tools.item3">Escolha o formato: <span class="key-hint">zstd</span> (melhor ratio), <span class="key-hint">zlib</span> (compatível) ou <span class="key-hint">none</span> (apenas criptografia)</li>
+        <li data-i18n-html="tools.item4">Upload o arquivo <code>.tfl</code> ao seu servidor HTTP/HTTPS</li>
       </ol>
     </div>
   </div>
@@ -575,15 +619,15 @@ python encrypt_index.py \
 <!-- BUILD -->
 <section id="build">
   <div class="container">
-    <div class="section-label">Build</div>
-    <h2>Compilar do fonte</h2>
-    <p class="section-sub">Requer devkitPro com as toolchains do Switch.</p>
+    <div class="section-label" data-i18n="build.label">Build</div>
+    <h2 data-i18n="build.title">Compilar do fonte</h2>
+    <p class="section-sub" data-i18n="build.copy">Requer devkitPro com as toolchains do Switch.</p>
 
     <ul class="req-list" style="margin-bottom:1.8rem;">
-      <li>devkitPro — devkitA64</li>
+      <li data-i18n="build.item1">devkitPro — devkitA64</li>
       <li>libnx</li>
       <li>Switch portlibs (libcurl, mbedTLS, zstd, zlib)</li>
-      <li><a href="https://github.com/XorTroll/Plutonium" target="_blank" style="color:var(--accent);">Plutonium</a> em <code>lib/plutonium/</code></li>
+      <li data-i18n-html="build.item4"><a href="https://github.com/XorTroll/Plutonium" target="_blank" style="color:var(--accent);">Plutonium</a> em <code>lib/plutonium/</code></li>
     </ul>
 
     <div class="code-wrap" style="max-width:560px;">
@@ -611,11 +655,340 @@ make -j$(nproc)
     <a href="https://github.com/CostelaCNX/PortNX" target="_blank">GitHub</a>
     <a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank">Releases</a>
     <a href="https://github.com/CostelaCNX/PortNX/issues" target="_blank">Issues</a>
-    <a href="https://github.com/CostelaCNX/PortNX/blob/master/LICENSE" target="_blank">Licença GPLv3</a>
+    <a href="https://github.com/CostelaCNX/PortNX/blob/master/LICENSE" target="_blank" data-i18n="footer.license">Licença GPLv3</a>
   </div>
-  <p>PortNX &copy; 2026 CostelaBR &nbsp;·&nbsp; Nintendo Switch homebrew, não afiliado à Nintendo.<br>v2.0.0 &nbsp;·&nbsp; Interface Plutonium SDL2</p>
+  <p data-i18n-html="footer.copy">PortNX &copy; 2026 CostelaBR &nbsp;·&nbsp; Nintendo Switch homebrew, não afiliado à Nintendo.<br>v2.0.1 &nbsp;·&nbsp; Interface Plutonium SDL2</p>
 </footer>
 
+<script>
+  const translations = {
+    pt: {
+      metaTitle: 'PortNX — Nintendo Switch Port Installer',
+      metaDescription: 'Homebrew para Nintendo Switch que instala ports com UI moderna em Plutonium, grid/list view e fila inteligente.',
+      'nav.features': 'Recursos',
+      'nav.howto': 'Como funciona',
+      'nav.install': 'Instalação',
+      'nav.catalog': 'Catálogo',
+      'nav.download': 'Download',
+      'hero.badge': 'Nintendo Switch Homebrew · v2.0.1',
+      'hero.title': 'Instale ports no Switch<br><span>com uma UI moderna</span>',
+      'hero.copy': 'Homebrew para Nintendo Switch que navega, baixa e instala ports com interface Plutonium, visual em grid/list view e fila inteligente.',
+      'hero.download': '⬇ Download NRO v2.0.1',
+      'hero.github': '⌥ Ver no GitHub',
+      'features.label': 'Recursos',
+      'features.title': 'Tudo que você precisa',
+      'features.copy': 'Interface moderna e intuitiva para instalar ports de forma rápida e organizada.',
+      'features.home.title': 'Home screen intuitiva',
+      'features.home.copy': 'Três cards SNES-palette (Browse, Fila, Ajustes) com navegação por analog stick e touch.',
+      'features.grid.title': 'Grid ou List view',
+      'features.grid.copy': 'Browse em grade 3×2 (256×256 ícones) ou lista full-width. Toggle com botão Y, L/R para paginar.',
+      'features.stream.title': 'Stream install',
+      'features.stream.copy': 'Instala ports direto pelo sistema do console, sem armazenamento intermediário no SD.',
+      'features.queue.title': 'Fila inteligente',
+      'features.queue.copy': 'Adicione vários títulos à fila. Pressione X para pular o item atual — próximo começa automaticamente. Re-adicione a qualquer hora.',
+      'features.controls.title': 'Controles completos',
+      'features.controls.copy': 'Navegação por D-Pad, analog sticks, botões e touch em todas as telas principais.',
+      'features.cache.title': 'Cache inteligente',
+      'features.cache.copy': 'Ícones são cacheados localmente. Índices remotos suportam JSON puro ou criptografado (TINFOIL).',
+      'howto.label': 'Como funciona',
+      'howto.title': 'O fluxo do app',
+      'howto.copy': 'Desde o launch até a instalação, entenda cada tela e o que você controla.',
+      'howto.home.title': '🏠 Home Screen',
+      'howto.home.copy': 'Ao abrir o PortNX, você vê três cards coloridos:',
+      'howto.home.item1': '<strong>Browse</strong> (vermelho): navegue catálogos',
+      'howto.home.item2': '<strong>Fila</strong> (azul): acompanhe downloads/installs',
+      'howto.home.item3': '<strong>Ajustes</strong> (verde): configure destino e opções de instalação',
+      'howto.home.nav': 'Navegue com <span class="key-hint">D-Pad</span> / <span class="key-hint">Sticks</span> ou toque. Pressione <span class="key-hint">A</span> para entrar.',
+      'howto.settings.title': '⚙️ Ajustes',
+      'howto.settings.copy': 'Configure o app uma única vez:',
+      'howto.settings.item1': '<strong>Destino da instalação</strong>: SD card ou NAND',
+      'howto.settings.nav': 'Navegue com <span class="key-hint">Up</span>/<span class="key-hint">Down</span> ou toque. Pressione <span class="key-hint">A</span> para editar.',
+      'howto.browse.title': '🗂 Browse',
+      'howto.browse.copy': 'Veja todos os ports disponíveis no seu catálogo:',
+      'howto.browse.item1': '<strong>Grid (3×2)</strong>: visualização por ícone com nome e metadata',
+      'howto.browse.item2': '<strong>List</strong>: visualização em linhas, compacta com ícone pequeno',
+      'howto.browse.item3': 'Toggle entre os dois com <span class="key-hint">Y</span>',
+      'howto.browse.item4': 'Pagine com <span class="key-hint">L</span>/<span class="key-hint">R</span> ou <span class="key-hint">Up</span>/<span class="key-hint">Down</span> (wrap automático)',
+      'howto.browse.nav': 'Selecione um title com <span class="key-hint">A</span> para queuer download + instalação.',
+      'howto.queue.title': '📥 Fila',
+      'howto.queue.copy': 'Acompanhe downloads e instalações em tempo real:',
+      'howto.queue.item1': 'Mostra o item atual com barra de progresso e porcentagem',
+      'howto.queue.item2': 'Lista os títulos ainda na fila (máximo 5 visíveis)',
+      'howto.queue.item3': 'Histórico de instalações bem-sucedidas',
+      'howto.queue.item4': 'Pressione <span class="key-hint">X</span> para cancelar o item atual (próximo inicia automaticamente)',
+      'howto.queue.nav': 'Voltando ao Browse, você pode re-adicionar um item cancelado.',
+      'install.label': 'Instalação',
+      'install.title': 'Pronto em 4 passos',
+      'install.copy': 'Requer um Nintendo Switch com Atmosphere CFW instalado.',
+      'install.step1.title': 'Baixe o PortNX.nro',
+      'install.step1.copy': 'Na página de <a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank" style="color:var(--accent);">releases do GitHub</a>, baixe a versão mais recente do <code>PortNX.nro</code>.',
+      'install.step2.title': 'Copie para o SD',
+      'install.step2.copy': 'Coloque o arquivo em <code>sdmc:/switch/PortNX/PortNX.nro</code>.',
+      'install.step3.title': 'Abra pelo hbmenu',
+      'install.step3.copy': 'No hbmenu do Switch (segure <strong>R</strong> + rode um jogo), selecione PortNX.',
+      'install.step4.title': 'Navegue e instale',
+      'install.step4.copy': 'Abra o <strong>Browse</strong>, escolha um port e acompanhe tudo pela <strong>Fila</strong>.',
+      'install.req.title': '⚠ Requisitos',
+      'install.req.item1': 'Nintendo Switch com Atmosphere CFW',
+      'install.req.item2': 'prod.keys acessível ao homebrew',
+      'catalog.label': 'Catálogo',
+      'catalog.title': 'Formato do índice JSON',
+      'catalog.copy': 'O PortNX usa o formato padrão do Tinfoil. Qualquer servidor compatível com Tinfoil funciona. Abaixo um exemplo mínimo e um completo.',
+      'catalog.min': 'Mínimo',
+      'catalog.full': 'Completo',
+      'catalog.encrypted.title': '🔐 Índice criptografado',
+      'catalog.encrypted.copy': 'O PortNX também aceita índices no formato TINFOIL (binário com cabeçalho <code>TINFOIL</code>).',
+      'catalog.encrypted.tools': 'Para gerar índices criptografados compatíveis, use as ferramentas em',
+      'tools.label': 'Ferramentas',
+      'tools.title': 'Criptografar seu índice',
+      'tools.copy': 'Se você quer servir um catálogo privado ou seguro, use o script Python em <code>tools/</code> para encriptar seu índice JSON.',
+      'tools.deps': 'Dependências',
+      'tools.encrypt': 'Encriptar',
+      'tools.how': 'Como usar:',
+      'tools.item1': 'Coloque <code>public_key.pem</code> na mesma pasta do script',
+      'tools.item2': 'Execute <code>python encrypt_index.py seu_index.json</code> ou com flags <code>--compress</code> e <code>--out</code>',
+      'tools.item3': 'Escolha o formato: <span class="key-hint">zstd</span> (melhor ratio), <span class="key-hint">zlib</span> (compatível) ou <span class="key-hint">none</span> (apenas criptografia)',
+      'tools.item4': 'Upload o arquivo <code>.tfl</code> ao seu servidor HTTP/HTTPS',
+      'build.label': 'Build',
+      'build.title': 'Compilar do fonte',
+      'build.copy': 'Requer devkitPro com as toolchains do Switch.',
+      'build.item1': 'devkitPro — devkitA64',
+      'build.item4': '<a href="https://github.com/XorTroll/Plutonium" target="_blank" style="color:var(--accent);">Plutonium</a> em <code>lib/plutonium/</code>',
+      'footer.license': 'Licença GPLv3',
+      'footer.copy': 'PortNX &copy; 2026 CostelaBR &nbsp;·&nbsp; Nintendo Switch homebrew, não afiliado à Nintendo.<br>v2.0.1 &nbsp;·&nbsp; Interface Plutonium SDL2'
+    },
+    en: {
+      metaTitle: 'PortNX — Nintendo Switch Port Installer',
+      metaDescription: 'Nintendo Switch homebrew for browsing, downloading, and installing ports with a modern Plutonium UI.',
+      'nav.features': 'Features',
+      'nav.howto': 'How it works',
+      'nav.install': 'Install',
+      'nav.catalog': 'Catalog',
+      'nav.download': 'Download',
+      'hero.badge': 'Nintendo Switch Homebrew · v2.0.1',
+      'hero.title': 'Install ports on Switch<br><span>with a modern UI</span>',
+      'hero.copy': 'Nintendo Switch homebrew that browses, downloads, and installs ports with a Plutonium interface, grid/list views, and a smart queue.',
+      'hero.download': '⬇ Download NRO v2.0.1',
+      'hero.github': '⌥ View on GitHub',
+      'features.label': 'Features',
+      'features.title': 'Everything you need',
+      'features.copy': 'A modern, intuitive interface for installing ports quickly and keeping everything organized.',
+      'features.home.title': 'Intuitive home screen',
+      'features.home.copy': 'Three SNES-palette cards (Browse, Queue, Settings) with analog stick and touch navigation.',
+      'features.grid.title': 'Grid or list view',
+      'features.grid.copy': 'Browse in a 3×2 grid (256×256 icons) or a full-width list. Toggle with Y, page with L/R.',
+      'features.stream.title': 'Stream install',
+      'features.stream.copy': 'Installs ports directly through the console system without intermediate SD storage.',
+      'features.queue.title': 'Smart queue',
+      'features.queue.copy': 'Add multiple titles to the queue. Press X to skip the current item; the next one starts automatically.',
+      'features.controls.title': 'Full controls',
+      'features.controls.copy': 'D-Pad, analog sticks, buttons, and touch navigation across all main screens.',
+      'features.cache.title': 'Smart cache',
+      'features.cache.copy': 'Icons are cached locally. Remote indexes support plain or encrypted JSON (TINFOIL).',
+      'howto.label': 'How it works',
+      'howto.title': 'The app flow',
+      'howto.copy': 'From launch to install, understand each screen and what you control.',
+      'howto.home.title': '🏠 Home Screen',
+      'howto.home.copy': 'When PortNX opens, you see three colored cards:',
+      'howto.home.item1': '<strong>Browse</strong> (red): browse catalogs',
+      'howto.home.item2': '<strong>Queue</strong> (blue): track downloads/installs',
+      'howto.home.item3': '<strong>Settings</strong> (green): configure destination and install options',
+      'howto.home.nav': 'Navigate with <span class="key-hint">D-Pad</span> / <span class="key-hint">Sticks</span> or touch. Press <span class="key-hint">A</span> to enter.',
+      'howto.settings.title': '⚙️ Settings',
+      'howto.settings.copy': 'Configure the app once:',
+      'howto.settings.item1': '<strong>Install destination</strong>: SD card or NAND',
+      'howto.settings.nav': 'Navigate with <span class="key-hint">Up</span>/<span class="key-hint">Down</span> or touch. Press <span class="key-hint">A</span> to edit.',
+      'howto.browse.title': '🗂 Browse',
+      'howto.browse.copy': 'See all ports available in your catalog:',
+      'howto.browse.item1': '<strong>Grid (3×2)</strong>: icon view with name and metadata',
+      'howto.browse.item2': '<strong>List</strong>: compact rows with small icons',
+      'howto.browse.item3': 'Toggle between them with <span class="key-hint">Y</span>',
+      'howto.browse.item4': 'Page with <span class="key-hint">L</span>/<span class="key-hint">R</span> or <span class="key-hint">Up</span>/<span class="key-hint">Down</span> (automatic wrap)',
+      'howto.browse.nav': 'Select a title with <span class="key-hint">A</span> to queue download + install.',
+      'howto.queue.title': '📥 Queue',
+      'howto.queue.copy': 'Track downloads and installs in real time:',
+      'howto.queue.item1': 'Shows the current item with progress bar and percentage',
+      'howto.queue.item2': 'Lists queued titles (up to 5 visible)',
+      'howto.queue.item3': 'Successful install history',
+      'howto.queue.item4': 'Press <span class="key-hint">X</span> to cancel the current item (the next starts automatically)',
+      'howto.queue.nav': 'Back in Browse, you can add a canceled item again.',
+      'install.label': 'Install',
+      'install.title': 'Ready in 4 steps',
+      'install.copy': 'Requires a Nintendo Switch with Atmosphere CFW installed.',
+      'install.step1.title': 'Download PortNX.nro',
+      'install.step1.copy': 'On the <a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank" style="color:var(--accent);">GitHub releases page</a>, download the latest <code>PortNX.nro</code>.',
+      'install.step2.title': 'Copy to SD',
+      'install.step2.copy': 'Place the file at <code>sdmc:/switch/PortNX/PortNX.nro</code>.',
+      'install.step3.title': 'Open from hbmenu',
+      'install.step3.copy': 'In the Switch hbmenu (hold <strong>R</strong> + launch a game), select PortNX.',
+      'install.step4.title': 'Browse and install',
+      'install.step4.copy': 'Open <strong>Browse</strong>, choose a port, and track everything in <strong>Queue</strong>.',
+      'install.req.title': '⚠ Requirements',
+      'install.req.item1': 'Nintendo Switch with Atmosphere CFW',
+      'install.req.item2': 'prod.keys available to homebrew',
+      'catalog.label': 'Catalog',
+      'catalog.title': 'JSON index format',
+      'catalog.copy': 'PortNX uses the standard Tinfoil format. Any Tinfoil-compatible server works. Below are minimal and complete examples.',
+      'catalog.min': 'Minimal',
+      'catalog.full': 'Complete',
+      'catalog.encrypted.title': '🔐 Encrypted index',
+      'catalog.encrypted.copy': 'PortNX also accepts indexes in TINFOIL format (binary with a <code>TINFOIL</code> header).',
+      'catalog.encrypted.tools': 'To generate compatible encrypted indexes, use the tools in',
+      'tools.label': 'Tools',
+      'tools.title': 'Encrypt your index',
+      'tools.copy': 'To serve a private or secure catalog, use the Python script in <code>tools/</code> to encrypt your JSON index.',
+      'tools.deps': 'Dependencies',
+      'tools.encrypt': 'Encrypt',
+      'tools.how': 'How to use:',
+      'tools.item1': 'Place <code>public_key.pem</code> in the same folder as the script',
+      'tools.item2': 'Run <code>python encrypt_index.py your_index.json</code> or use <code>--compress</code> and <code>--out</code>',
+      'tools.item3': 'Choose the format: <span class="key-hint">zstd</span> (best ratio), <span class="key-hint">zlib</span> (compatible), or <span class="key-hint">none</span> (encryption only)',
+      'tools.item4': 'Upload the <code>.tfl</code> file to your HTTP/HTTPS server',
+      'build.label': 'Build',
+      'build.title': 'Build from source',
+      'build.copy': 'Requires devkitPro with Switch toolchains.',
+      'build.item1': 'devkitPro — devkitA64',
+      'build.item4': '<a href="https://github.com/XorTroll/Plutonium" target="_blank" style="color:var(--accent);">Plutonium</a> in <code>lib/plutonium/</code>',
+      'footer.license': 'GPLv3 License',
+      'footer.copy': 'PortNX &copy; 2026 CostelaBR &nbsp;·&nbsp; Nintendo Switch homebrew, not affiliated with Nintendo.<br>v2.0.1 &nbsp;·&nbsp; Plutonium SDL2 interface'
+    },
+    es: {
+      metaTitle: 'PortNX — Instalador de ports para Nintendo Switch',
+      metaDescription: 'Homebrew para Nintendo Switch que navega, descarga e instala ports con una interfaz moderna en Plutonium.',
+      'nav.features': 'Funciones',
+      'nav.howto': 'Cómo funciona',
+      'nav.install': 'Instalación',
+      'nav.catalog': 'Catálogo',
+      'nav.download': 'Descarga',
+      'hero.badge': 'Nintendo Switch Homebrew · v2.0.1',
+      'hero.title': 'Instala ports en Switch<br><span>con una UI moderna</span>',
+      'hero.copy': 'Homebrew para Nintendo Switch que navega, descarga e instala ports con interfaz Plutonium, vistas en grid/lista y cola inteligente.',
+      'hero.download': '⬇ Descargar NRO v2.0.1',
+      'hero.github': '⌥ Ver en GitHub',
+      'features.label': 'Funciones',
+      'features.title': 'Todo lo que necesitas',
+      'features.copy': 'Una interfaz moderna e intuitiva para instalar ports de forma rápida y organizada.',
+      'features.home.title': 'Pantalla inicial intuitiva',
+      'features.home.copy': 'Tres tarjetas con paleta SNES (Browse, Cola, Ajustes) con navegación por stick analógico y táctil.',
+      'features.grid.title': 'Vista grid o lista',
+      'features.grid.copy': 'Explora en grid 3×2 (íconos 256×256) o en lista de ancho completo. Cambia con Y, pagina con L/R.',
+      'features.stream.title': 'Stream install',
+      'features.stream.copy': 'Instala ports directamente mediante el sistema de la consola, sin almacenamiento intermedio en la SD.',
+      'features.queue.title': 'Cola inteligente',
+      'features.queue.copy': 'Agrega varios títulos a la cola. Presiona X para saltar el elemento actual; el siguiente inicia automáticamente.',
+      'features.controls.title': 'Controles completos',
+      'features.controls.copy': 'Navegación con D-Pad, sticks analógicos, botones y táctil en todas las pantallas principales.',
+      'features.cache.title': 'Caché inteligente',
+      'features.cache.copy': 'Los íconos se guardan localmente. Los índices remotos soportan JSON simple o cifrado (TINFOIL).',
+      'howto.label': 'Cómo funciona',
+      'howto.title': 'El flujo de la app',
+      'howto.copy': 'Desde el inicio hasta la instalación, entiende cada pantalla y lo que controlas.',
+      'howto.home.title': '🏠 Pantalla inicial',
+      'howto.home.copy': 'Al abrir PortNX, ves tres tarjetas coloridas:',
+      'howto.home.item1': '<strong>Browse</strong> (rojo): navega catálogos',
+      'howto.home.item2': '<strong>Cola</strong> (azul): sigue descargas/instalaciones',
+      'howto.home.item3': '<strong>Ajustes</strong> (verde): configura destino y opciones de instalación',
+      'howto.home.nav': 'Navega con <span class="key-hint">D-Pad</span> / <span class="key-hint">Sticks</span> o táctil. Presiona <span class="key-hint">A</span> para entrar.',
+      'howto.settings.title': '⚙️ Ajustes',
+      'howto.settings.copy': 'Configura la app una sola vez:',
+      'howto.settings.item1': '<strong>Destino de instalación</strong>: SD card o NAND',
+      'howto.settings.nav': 'Navega con <span class="key-hint">Up</span>/<span class="key-hint">Down</span> o táctil. Presiona <span class="key-hint">A</span> para editar.',
+      'howto.browse.title': '🗂 Browse',
+      'howto.browse.copy': 'Ve todos los ports disponibles en tu catálogo:',
+      'howto.browse.item1': '<strong>Grid (3×2)</strong>: vista por ícono con nombre y metadata',
+      'howto.browse.item2': '<strong>Lista</strong>: filas compactas con ícono pequeño',
+      'howto.browse.item3': 'Cambia entre ambas con <span class="key-hint">Y</span>',
+      'howto.browse.item4': 'Pagina con <span class="key-hint">L</span>/<span class="key-hint">R</span> o <span class="key-hint">Up</span>/<span class="key-hint">Down</span> (wrap automático)',
+      'howto.browse.nav': 'Selecciona un título con <span class="key-hint">A</span> para poner descarga + instalación en cola.',
+      'howto.queue.title': '📥 Cola',
+      'howto.queue.copy': 'Sigue descargas e instalaciones en tiempo real:',
+      'howto.queue.item1': 'Muestra el elemento actual con barra de progreso y porcentaje',
+      'howto.queue.item2': 'Lista los títulos pendientes (máximo 5 visibles)',
+      'howto.queue.item3': 'Historial de instalaciones exitosas',
+      'howto.queue.item4': 'Presiona <span class="key-hint">X</span> para cancelar el elemento actual (el siguiente inicia automáticamente)',
+      'howto.queue.nav': 'De vuelta en Browse, puedes agregar otra vez un elemento cancelado.',
+      'install.label': 'Instalación',
+      'install.title': 'Listo en 4 pasos',
+      'install.copy': 'Requiere una Nintendo Switch con Atmosphere CFW instalado.',
+      'install.step1.title': 'Descarga PortNX.nro',
+      'install.step1.copy': 'En la <a href="https://github.com/CostelaCNX/PortNX/releases" target="_blank" style="color:var(--accent);">página de releases de GitHub</a>, descarga la versión más reciente de <code>PortNX.nro</code>.',
+      'install.step2.title': 'Copia a la SD',
+      'install.step2.copy': 'Coloca el archivo en <code>sdmc:/switch/PortNX/PortNX.nro</code>.',
+      'install.step3.title': 'Abre desde hbmenu',
+      'install.step3.copy': 'En el hbmenu de Switch (mantén <strong>R</strong> + inicia un juego), selecciona PortNX.',
+      'install.step4.title': 'Navega e instala',
+      'install.step4.copy': 'Abre <strong>Browse</strong>, elige un port y sigue todo desde <strong>Cola</strong>.',
+      'install.req.title': '⚠ Requisitos',
+      'install.req.item1': 'Nintendo Switch con Atmosphere CFW',
+      'install.req.item2': 'prod.keys accesible para homebrew',
+      'catalog.label': 'Catálogo',
+      'catalog.title': 'Formato del índice JSON',
+      'catalog.copy': 'PortNX usa el formato estándar de Tinfoil. Cualquier servidor compatible con Tinfoil funciona. Abajo hay un ejemplo mínimo y uno completo.',
+      'catalog.min': 'Mínimo',
+      'catalog.full': 'Completo',
+      'catalog.encrypted.title': '🔐 Índice cifrado',
+      'catalog.encrypted.copy': 'PortNX también acepta índices en formato TINFOIL (binario con encabezado <code>TINFOIL</code>).',
+      'catalog.encrypted.tools': 'Para generar índices cifrados compatibles, usa las herramientas en',
+      'tools.label': 'Herramientas',
+      'tools.title': 'Cifrar tu índice',
+      'tools.copy': 'Si quieres servir un catálogo privado o seguro, usa el script Python en <code>tools/</code> para cifrar tu índice JSON.',
+      'tools.deps': 'Dependencias',
+      'tools.encrypt': 'Cifrar',
+      'tools.how': 'Cómo usar:',
+      'tools.item1': 'Coloca <code>public_key.pem</code> en la misma carpeta del script',
+      'tools.item2': 'Ejecuta <code>python encrypt_index.py tu_index.json</code> o usa las flags <code>--compress</code> y <code>--out</code>',
+      'tools.item3': 'Elige el formato: <span class="key-hint">zstd</span> (mejor ratio), <span class="key-hint">zlib</span> (compatible) o <span class="key-hint">none</span> (solo cifrado)',
+      'tools.item4': 'Sube el archivo <code>.tfl</code> a tu servidor HTTP/HTTPS',
+      'build.label': 'Build',
+      'build.title': 'Compilar desde el código fuente',
+      'build.copy': 'Requiere devkitPro con las toolchains de Switch.',
+      'build.item1': 'devkitPro — devkitA64',
+      'build.item4': '<a href="https://github.com/XorTroll/Plutonium" target="_blank" style="color:var(--accent);">Plutonium</a> en <code>lib/plutonium/</code>',
+      'footer.license': 'Licencia GPLv3',
+      'footer.copy': 'PortNX &copy; 2026 CostelaBR &nbsp;·&nbsp; Nintendo Switch homebrew, no afiliado a Nintendo.<br>v2.0.1 &nbsp;·&nbsp; Interfaz Plutonium SDL2'
+    }
+  };
+
+  const htmlLangs = { pt: 'pt-BR', en: 'en', es: 'es' };
+
+  function applyLanguage(lang) {
+    const selected = translations[lang] ? lang : 'pt';
+    const dictionary = translations[selected];
+
+    document.documentElement.lang = htmlLangs[selected];
+    document.title = dictionary.metaTitle;
+    document.querySelector('meta[name="description"]').setAttribute('content', dictionary.metaDescription);
+    document.querySelector('meta[property="og:title"]').setAttribute('content', 'PortNX v2.0.1');
+    document.querySelector('meta[property="og:description"]').setAttribute('content', dictionary.metaDescription);
+
+    document.querySelectorAll('[data-i18n]').forEach((node) => {
+      const value = dictionary[node.dataset.i18n];
+      if (value) node.textContent = value;
+    });
+
+    document.querySelectorAll('[data-i18n-html]').forEach((node) => {
+      const value = dictionary[node.dataset.i18nHtml];
+      if (value) node.innerHTML = value;
+    });
+
+    document.querySelectorAll('.lang-btn').forEach((button) => {
+      button.classList.toggle('active', button.dataset.lang === selected);
+      button.setAttribute('aria-pressed', String(button.dataset.lang === selected));
+    });
+
+    localStorage.setItem('portnx_lang', selected);
+  }
+
+  document.querySelectorAll('.lang-btn').forEach((button) => {
+    button.addEventListener('click', () => applyLanguage(button.dataset.lang));
+  });
+
+  const savedLanguage = localStorage.getItem('portnx_lang');
+  const browserLanguage = navigator.language && navigator.language.toLowerCase().startsWith('es') ? 'es'
+    : navigator.language && navigator.language.toLowerCase().startsWith('en') ? 'en'
+    : 'pt';
+  applyLanguage(savedLanguage || browserLanguage);
+</script>
 </body>
 </html>
 <!-- Updated Sun Jul  5 19:20:55     2026 -->

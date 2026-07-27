@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.1] — 2026-07-27
+
+Maintenance release focused on installation reliability and large remote packages.
+
+### Fixed
+- Reject HTTP servers that ignore Range requests during stream installs, preventing invalid package parsing after redirects or incompatible mirrors.
+- Report clearer errors when remote package headers cannot be fetched, including archive/mirror Range incompatibility.
+- Improve resumed downloads by validating existing `.part` files, checking only remaining free space, and finalizing already-complete partial downloads.
+- Use large-file seek/tell APIs while installing local content, improving compatibility with larger ports.
+
+### Changed
+- Remove the force reinstall setting from the app UI.
+
+---
+
 ## [2.0.0] — 2026-07-03
 
 Complete UI rewrite. Migrated from Borealis to Plutonium SDL2.
@@ -10,8 +25,6 @@ Complete UI rewrite. Migrated from Borealis to Plutonium SDL2.
 - Full-width list view in Browse, toggle with Y; Up/Down wraps between pages
 - Analog stick navigation (left stick + right stick) on home and grid
 - Touch support: tap cards on home, tap cells in Browse, tap top bar to go back
-- i18n system: English (en-US) and Português (pt-BR), switchable in Settings
-- App icon displayed on home screen
 
 ### Changed
 - Queue tab shows translated status strings (downloading, installing, done, error)
@@ -28,6 +41,6 @@ Complete UI rewrite. Migrated from Borealis to Plutonium SDL2.
 Initial release.
 
 - Browse remote port catalog over HTTP/HTTPS
-- Stream-install NSP/NSZ/XCI/XCZ via NCM + ES
+- Stream-install supported packages via NCM + ES
 - Install queue with per-item progress
 - Encrypted catalog index support
