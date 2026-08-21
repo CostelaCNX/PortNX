@@ -1,5 +1,4 @@
 #include <install/InstallManager.hpp>
-#include <install/InstallEngine.hpp>
 #include <install/StreamInstallEngine.hpp>
 
 namespace pinx::install {
@@ -21,6 +20,7 @@ bool InstallManager::enqueueStream(const StreamRequest &req) {
             job_queue_.pop_front();
             display_name = first.display_name;
             error.clear();
+            warning_.clear();
             needs_start = true;
         }
     }
@@ -41,46 +41,6 @@ bool InstallManager::enqueueStream(const StreamRequest &req) {
             runStream(std::move(first));
         });
     }
-    return true;
-}
-
-bool InstallManager::startStream(const StreamRequest &req) {
-    if(busy.exchange(true)) return false;
-
-    cancel_flag.store(false);
-    state.store(State::Running);
-    bytes_done.store(0);
-    bytes_total.store(0);
-    decompressing.store(false);
-    title_id.store(0);
-    {
-        std::lock_guard<std::mutex> lk(str_mtx);
-        display_name = req.display_name;
-        error.clear();
-    }
-
-    if(worker.joinable()) worker.join();
-    worker = std::thread([this, req] { runStream(req); });
-    return true;
-}
-
-bool InstallManager::start(const Request &req) {
-    if(busy.exchange(true)) return false;
-
-    cancel_flag.store(false);
-    state.store(State::Running);
-    bytes_done.store(0);
-    bytes_total.store(0);
-    decompressing.store(false);
-    title_id.store(0);
-    {
-        std::lock_guard<std::mutex> lk(str_mtx);
-        display_name.clear();
-        error.clear();
-    }
-
-    if(worker.joinable()) worker.join();
-    worker = std::thread([this, req] { run(req); });
     return true;
 }
 
@@ -109,6 +69,7 @@ InstallManager::Snapshot InstallManager::snapshot() const {
     s.display_name    = display_name;
     s.active_url      = active_url_;
     s.error           = error;
+    s.warning         = warning_;
     s.completed_names = completed_names_;
     s.installed_urls  = installed_urls_;
     for(const auto &j : job_queue_) {
@@ -137,6 +98,7 @@ void InstallManager::runStream(StreamRequest req) {
             title_id.store(result.title_id);
             {
                 std::lock_guard<std::mutex> lk(str_mtx);
+                warning_ = result.warning;
                 completed_names_.push_back(req.display_name);
                 installed_urls_.push_back(req.url);
             }
@@ -145,7 +107,8 @@ void InstallManager::runStream(StreamRequest req) {
         } else {
             {
                 std::lock_guard<std::mutex> lk(str_mtx);
-                error = result.error_message;
+                error   = result.error_message;
+                warning_ = result.warning;
             }
             state.store(State::Failed);
         }
@@ -160,6 +123,7 @@ void InstallManager::runStream(StreamRequest req) {
                 display_name = next.display_name;
                 active_url_  = next.url;
                 error.clear();
+                warning_.clear();
                 has_next = true;
             } else {
                 active_url_.clear();
@@ -179,35 +143,6 @@ void InstallManager::runStream(StreamRequest req) {
         title_id.store(0);
         req = std::move(next);
     }
-}
-
-void InstallManager::run(Request req) {
-    InstallConfig config;
-    config.dest_storage_id = NcmStorageId_SdCard;
-    config.ignore_req_fw   = true;
-    config.reinstall_ncas  = false;
-
-    InstallResult result = InstallFromLocalFile(req.file_path, config,
-        [this](const InstallProgress &p) {
-            bytes_done.store(p.bytes_done);
-            bytes_total.store(p.bytes_total);
-            decompressing.store(p.decompressing);
-        });
-
-    if(result.success) {
-        title_id.store(result.title_id);
-        {
-            std::lock_guard<std::mutex> lk(str_mtx);
-            completed_names_.push_back(req.file_path);
-        }
-        completions.fetch_add(1, std::memory_order_relaxed);
-        state.store(State::Done);
-    } else {
-        std::lock_guard<std::mutex> lk(str_mtx);
-        error = result.error_message;
-        state.store(State::Failed);
-    }
-    busy.store(false);
 }
 
 }

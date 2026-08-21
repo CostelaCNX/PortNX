@@ -4,7 +4,7 @@
 #include <install/NcaStructs.hpp>
 #include <install/NcmWrapper.hpp>
 #include <install/NszDecompressor.hpp>
-#include <install/Pfs0Parser.hpp>
+#include <download/FsGuard.hpp>
 #include <net/HttpClient.hpp>
 
 #include <algorithm>
@@ -18,10 +18,26 @@
 namespace pinx::install {
 namespace {
 
-constexpr std::size_t kPrefetchSize  = 65536;
-constexpr std::size_t kNcmWriteSize  = 1024 * 1024;
-constexpr int         kMaxRetries    = 3;
-constexpr int         kRetryBaseMs   = 1500;
+constexpr std::size_t   kPrefetchSize    = 65536;
+constexpr std::size_t   kNcmWriteSize    = 1024 * 1024;
+constexpr int           kMaxRetries      = 3;
+constexpr int           kRetryBaseMs     = 1500;
+constexpr std::uint64_t kFreeSpaceMargin = 64ull * 1024 * 1024;
+
+// NAND free space cannot be queried through statvfs, so the guard only applies
+// to SD installs. A zero reading means the query failed and is not treated as
+// a full card.
+bool HasFreeSpaceFor(NcmStorageId storage_id, std::uint64_t bytes, std::string &out_error) {
+    if(storage_id != NcmStorageId_SdCard) return true;
+
+    const std::uint64_t freeb = download::FreeBytes("sdmc:/");
+    if(freeb == 0 || freeb >= bytes + kFreeSpaceMargin) return true;
+
+    out_error = "Not enough free space on the SD card (need " +
+                std::to_string((bytes + kFreeSpaceMargin) / (1024 * 1024)) + " MB, have " +
+                std::to_string(freeb / (1024 * 1024)) + " MB)";
+    return false;
+}
 
 struct RemoteEntry {
     std::string   name;
@@ -275,7 +291,10 @@ bool StreamPlainNcaToStorage(const StreamInstallRequest &req,
         NcaHeader dec{};
         std::memcpy(&dec, hdr_buf.data(), sizeof(dec));
         DecryptNcaHeader(&dec, kNcaHeaderSize, *header_key);
-        if(dec.magic == kMagicNca3 && dec.nca_size >= kNcaHeaderSize) nca_size = dec.nca_size;
+        if(dec.magic == kMagicNca3 && dec.nca_size >= kNcaHeaderSize &&
+           dec.nca_size <= nca_file_size) {
+            nca_size = dec.nca_size;
+        }
         if(dec.distribution != 0) {
             dec.distribution = 0;
             EncryptNcaHeader(&dec, kNcaHeaderSize, *header_key);
@@ -299,34 +318,63 @@ bool StreamPlainNcaToStorage(const StreamInstallRequest &req,
         std::vector<std::uint8_t> wbuf;
         wbuf.reserve(kNcmWriteSize);
         std::uint64_t body_written = 0;
-        net::HttpOptions opts = req.http_opts; opts.cancel = stop_cb;
-        const net::StreamResult r = net::HttpStreamRange(req.url, body_offset, body_size,
-            [&](const void *d, std::size_t n) -> bool {
-                if(stop_cb && stop_cb()) return false;
-                const auto *src = static_cast<const std::uint8_t *>(d);
-                std::size_t left = n;
-                while(left > 0) {
-                    const std::size_t space = kNcmWriteSize - wbuf.size();
-                    const std::size_t take  = std::min(space, left);
-                    wbuf.insert(wbuf.end(), src, src + take);
-                    src += take; left -= take;
-                    if(wbuf.size() >= kNcmWriteSize) {
-                        if(!storage.WritePlaceholder(nca_id, written + body_written,
-                                                      wbuf.data(), wbuf.size())) return false;
-                        body_written += wbuf.size();
-                        wbuf.clear();
-                        if(progress) progress(InstallProgress{written + body_written, nca_size,
-                                                               nca_name, nca_index, nca_count, false});
-                    }
-                }
-                return true;
-            }, opts);
-        ok = r.success;
-        if(ok && !wbuf.empty()) {
-            ok = storage.WritePlaceholder(nca_id, written + body_written,
-                                           wbuf.data(), wbuf.size());
+        bool storage_failed = false;
+
+        net::HttpOptions opts = req.http_opts;
+        opts.cancel = stop_cb;
+
+        auto flush = [&]() -> bool {
+            if(wbuf.empty()) return true;
+            if(!storage.WritePlaceholder(nca_id, written + body_written,
+                                          wbuf.data(), wbuf.size())) {
+                storage_failed = true;
+                return false;
+            }
             body_written += wbuf.size();
+            wbuf.clear();
+            if(progress) progress(InstallProgress{written + body_written, nca_size,
+                                                   nca_name, nca_index, nca_count, false});
+            return true;
+        };
+
+        ok = false;
+        for(int attempt = 0; attempt <= kMaxRetries; attempt++) {
+            if(stop_cb && stop_cb()) break;
+            if(body_written >= body_size) { ok = true; break; }
+
+            // Bytes buffered but not yet committed to the placeholder are dropped:
+            // the retry re-requests the range starting at the last committed offset.
+            wbuf.clear();
+
+            const net::StreamResult r = net::HttpStreamRange(
+                req.url, body_offset + body_written, body_size - body_written,
+                [&](const void *d, std::size_t n) -> bool {
+                    if(stop_cb && stop_cb()) return false;
+                    const auto *src = static_cast<const std::uint8_t *>(d);
+                    std::size_t left = n;
+                    while(left > 0) {
+                        const std::size_t space = kNcmWriteSize - wbuf.size();
+                        const std::size_t take  = std::min(space, left);
+                        wbuf.insert(wbuf.end(), src, src + take);
+                        src += take; left -= take;
+                        if(wbuf.size() >= kNcmWriteSize && !flush()) return false;
+                    }
+                    return true;
+                }, opts);
+
+            if(r.success && !flush()) break;
+            if(storage_failed) break;
+
+            // A transfer that reports success but delivers a short body is
+            // retried from the last committed offset, same as a hard failure.
+            if(body_written >= body_size) { ok = true; break; }
+
+            if(attempt < kMaxRetries) {
+                std::this_thread::sleep_for(
+                    std::chrono::milliseconds(kRetryBaseMs * (1 << attempt)));
+            }
         }
+
         if(ok) written += body_written;
     }
 
@@ -353,16 +401,23 @@ InstallResult InstallRemoteEntries(const StreamInstallRequest &req,
     ContentMetaDatabase meta_db(req.install_config.dest_storage_id);
     if(!meta_db.IsOpen()) { result.error_message = "Failed to open content meta database"; return result; }
 
-    std::vector<NcmContentId> registered_ids;
+    std::vector<NcmContentId>      registered_ids;
+    std::vector<NcmContentMetaKey> committed_keys;
     struct CleanupGuard {
-        ContentStorage &storage;
-        std::vector<NcmContentId> &ids;
+        ContentStorage                 &storage;
+        ContentMetaDatabase            &meta_db;
+        std::vector<NcmContentId>      &ids;
+        std::vector<NcmContentMetaKey> &keys;
         bool armed = true;
         ~CleanupGuard() {
             if(!armed) return;
+            if(!keys.empty()) {
+                for(const auto &key : keys) meta_db.Remove(key);
+                meta_db.Commit();
+            }
             for(const auto &id : ids) storage.Delete(id);
         }
-    } cleanup{storage, registered_ids};
+    } cleanup{storage, meta_db, registered_ids, committed_keys};
 
     std::vector<const RemoteEntry *> tik_vec, cert_vec;
     for(const auto &e : entries) {
@@ -372,13 +427,32 @@ InstallResult InstallRemoteEntries(const StreamInstallRequest &req,
         if(lo.size() >= 4 && lo.substr(lo.size() - 4) == ".tik")  tik_vec.push_back(&e);
         if(lo.size() >= 5 && lo.substr(lo.size() - 5) == ".cert") cert_vec.push_back(&e);
     }
-    for(std::size_t i = 0; i < tik_vec.size() && i < cert_vec.size(); i++) {
+    // Every ticket is attempted, pairing with the cert at the same index and
+    // falling back to the first one when the counts do not match, so a package
+    // with fewer certs than tickets is not skipped outright. A rejected ticket
+    // is reported but does not abort: the content still installs, and titles
+    // using standard crypto launch without it.
+    std::size_t tickets_failed = 0;
+    for(std::size_t i = 0; i < tik_vec.size(); i++) {
+        const RemoteEntry *cert_e = nullptr;
+        if(i < cert_vec.size())        cert_e = cert_vec[i];
+        else if(!cert_vec.empty())     cert_e = cert_vec.front();
+
         std::vector<std::uint8_t> tik_buf, cert_buf;
-        RangeRead(req, tik_vec[i]->offset,  tik_vec[i]->size,  tik_buf);
-        RangeRead(req, cert_vec[i]->offset, cert_vec[i]->size, cert_buf);
-        if(tik_buf.size() == tik_vec[i]->size && cert_buf.size() == cert_vec[i]->size) {
-            ImportTicket(tik_buf.data(), tik_buf.size(), cert_buf.data(), cert_buf.size());
+        RangeRead(req, tik_vec[i]->offset, tik_vec[i]->size, tik_buf);
+        if(cert_e) RangeRead(req, cert_e->offset, cert_e->size, cert_buf);
+
+        const bool tik_ok  = tik_buf.size() == tik_vec[i]->size;
+        const bool cert_ok = !cert_e || cert_buf.size() == cert_e->size;
+
+        if(!tik_ok || !cert_ok ||
+           !ImportTicket(tik_buf.data(), tik_buf.size(), cert_buf.data(), cert_buf.size())) {
+            tickets_failed++;
         }
+    }
+    if(tickets_failed > 0) {
+        result.warning = "Could not import " + std::to_string(tickets_failed) +
+                         " ticket(s). The title may not launch.";
     }
 
     struct CnmtRecord { ContentMeta meta; NcmContentInfo cnmt_info; };
@@ -425,24 +499,6 @@ InstallResult InstallRemoteEntries(const StreamInstallRequest &req,
 
     if(cnmt_records.empty()) { result.error_message = "No CNMT NCA found in package"; return result; }
 
-    struct DeferredPush { std::uint64_t base_title_id; NcmContentMetaKey key; };
-    std::vector<DeferredPush> deferred_pushes;
-    for(auto &rec : cnmt_records) {
-        const auto key = rec.meta.GetContentMetaKey();
-        ByteBuffer install_buf;
-        if(!rec.meta.GetInstallContentMeta(install_buf, rec.cnmt_info, req.install_config.ignore_req_fw)) {
-            result.error_message = "Failed to build install content meta"; return result;
-        }
-        if(!meta_db.Set(key, install_buf.GetData(), install_buf.GetSize())) {
-            result.error_message = "Failed to set content meta"; return result;
-        }
-        if(!meta_db.Commit()) {
-            result.error_message = "Failed to commit content meta database"; return result;
-        }
-        deferred_pushes.push_back({ GetBaseTitleId(key.id, static_cast<std::uint8_t>(key.type)), key });
-        result.title_id = key.id;
-    }
-
     std::vector<NcmContentInfo> all_infos;
     for(auto &rec : cnmt_records) {
         auto infos = rec.meta.GetContentInfos();
@@ -464,6 +520,12 @@ InstallResult InstallRemoteEntries(const StreamInstallRequest &req,
         }
         if(!entry) { result.error_message = "Missing NCA: " + id_hex; return result; }
 
+        std::uint64_t nca_size = 0;
+        ncmContentInfoSizeToU64(&info, &nca_size);
+        if(!HasFreeSpaceFor(req.install_config.dest_storage_id, nca_size, result.error_message)) {
+            return result;
+        }
+
         bool ok = false;
         if(IsNczName(entry->name) && hk) {
             ok = DecompressNczFromRangeReaderToStorage(
@@ -480,6 +542,28 @@ InstallResult InstallRemoteEntries(const StreamInstallRequest &req,
         }
         if(!ok) { result.error_message = "Failed to install NCA: " + entry->name; return result; }
         registered_ids.push_back(info.content_id);
+    }
+
+    // Content meta is written only once every NCA is registered, so a failure
+    // mid-install cannot leave a meta record pointing at content that the
+    // cleanup guard is about to delete.
+    struct DeferredPush { std::uint64_t base_title_id; NcmContentMetaKey key; };
+    std::vector<DeferredPush> deferred_pushes;
+    for(auto &rec : cnmt_records) {
+        const auto key = rec.meta.GetContentMetaKey();
+        ByteBuffer install_buf;
+        if(!rec.meta.GetInstallContentMeta(install_buf, rec.cnmt_info, req.install_config.ignore_req_fw)) {
+            result.error_message = "Failed to build install content meta"; return result;
+        }
+        if(!meta_db.Set(key, install_buf.GetData(), install_buf.GetSize())) {
+            result.error_message = "Failed to set content meta"; return result;
+        }
+        if(!meta_db.Commit()) {
+            result.error_message = "Failed to commit content meta database"; return result;
+        }
+        committed_keys.push_back(key);
+        deferred_pushes.push_back({ GetBaseTitleId(key.id, static_cast<std::uint8_t>(key.type)), key });
+        result.title_id = key.id;
     }
 
     for(const auto &dp : deferred_pushes) {

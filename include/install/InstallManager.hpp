@@ -8,7 +8,7 @@
 #include <thread>
 #include <vector>
 
-#include <install/InstallEngine.hpp>
+#include <install/InstallTypes.hpp>
 #include <net/HttpClient.hpp>
 
 namespace pinx::install {
@@ -16,10 +16,6 @@ namespace pinx::install {
 class InstallManager {
     public:
         enum class State { Idle, Running, Done, Failed };
-
-        struct Request {
-            std::string file_path;
-        };
 
         struct StreamRequest {
             std::string      url;
@@ -35,6 +31,7 @@ class InstallManager {
             bool          decompressing = false;
             std::string   display_name;
             std::string   error;
+            std::string   warning;
             std::uint64_t title_id      = 0;
             std::uint32_t completions   = 0;   // increments after each successful install
 
@@ -52,15 +49,12 @@ class InstallManager {
         InstallManager() = default;
         ~InstallManager();
 
-        bool start(const Request &req);
-        bool startStream(const StreamRequest &req);
         bool enqueueStream(const StreamRequest &req);
         void cancel();
         void shutdown();
         Snapshot snapshot() const;
 
     private:
-        void run(Request req);
         void runStream(StreamRequest req);
 
         std::thread                worker;
@@ -77,6 +71,7 @@ class InstallManager {
         std::string                     display_name;
         std::string                     active_url_;
         std::string                     error;
+        std::string                     warning_;
         std::deque<StreamRequest>       job_queue_;
         std::vector<std::string>        completed_names_;
         std::vector<std::string>        installed_urls_;

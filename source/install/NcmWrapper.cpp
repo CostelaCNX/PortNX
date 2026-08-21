@@ -77,6 +77,21 @@ bool ContentStorage::Delete(const NcmContentId &id) {
     return R_SUCCEEDED(rc);
 }
 
+void CleanupStalePlaceholders() {
+    static constexpr NcmStorageId kStorages[] = {
+        NcmStorageId_SdCard, NcmStorageId_BuiltInUser
+    };
+    for(const auto storage_id : kStorages) {
+        ContentStorage storage(storage_id);
+        if(storage.IsOpen()) storage.CleanupPlaceholders();
+    }
+}
+
+void ContentStorage::CleanupPlaceholders() {
+    if(!open_) return;
+    ncmContentStorageCleanupAllPlaceHolder(&storage_);
+}
+
 ContentMetaDatabase::ContentMetaDatabase(NcmStorageId storage_id) {
     Result rc = ncmOpenContentMetaDatabase(&db_, storage_id);
     open_ = R_SUCCEEDED(rc);

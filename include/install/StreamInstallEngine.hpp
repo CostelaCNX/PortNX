@@ -4,7 +4,7 @@
 #include <functional>
 #include <string>
 
-#include <install/InstallEngine.hpp>
+#include <install/InstallTypes.hpp>
 #include <net/HttpClient.hpp>
 
 namespace pinx::install {

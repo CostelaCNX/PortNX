@@ -22,6 +22,9 @@ using ProgressCallback = std::function<void(const InstallProgress &)>;
 struct InstallResult {
     bool          success = false;
     std::string   error_message;
+    // Set when the install completed but something needs the user's attention,
+    // such as a ticket that could not be imported.
+    std::string   warning;
     std::uint64_t title_id = 0;
 };
 
@@ -30,13 +33,5 @@ struct InstallConfig {
     bool         ignore_req_fw   = true;
     bool         reinstall_ncas  = false;
 };
-
-InstallResult InstallFromLocalFile(const std::string &file_path,
-                                    const InstallConfig &config,
-                                    ProgressCallback progress = nullptr);
-
-InstallResult InstallNsp(const std::string &file_path,
-                          const InstallConfig &config,
-                          ProgressCallback progress);
 
 }

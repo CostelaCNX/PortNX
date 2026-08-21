@@ -20,6 +20,7 @@ static constexpr pu::ui::Color kTextMuted   = { 139, 148, 158, 255 };
 static constexpr pu::ui::Color kAccent      = {  31, 111, 235, 255 };
 static constexpr pu::ui::Color kSuccess     = {  63, 185, 80,  255 };
 static constexpr pu::ui::Color kError       = { 248,  81,  73, 255 };
+static constexpr pu::ui::Color kWarning     = { 210, 153,  34, 255 };
 
 std::string HumanSize(std::uint64_t bytes) {
     const char *units[] = {"B", "KB", "MB", "GB"};
@@ -120,8 +121,9 @@ void QueueTab::Poll() {
             dl.state   == DState::Canceled)
         new_phase = Phase::Failed;
 
-    phase_       = new_phase;
-    queue_names_ = inst.queue_names;
+    phase_        = new_phase;
+    queue_names_  = inst.queue_names;
+    has_warning_  = !inst.warning.empty();
 
     switch(phase_) {
         case Phase::Idle:
@@ -168,7 +170,9 @@ void QueueTab::Poll() {
             if(dl.state == DState::Done && inst.state != IState::Done)
                 status_text_ = pinx::i18n::tr("queue.dl_done");
             else {
-                status_text_ = pinx::i18n::tr("queue.inst_done");
+                status_text_ = inst.warning.empty()
+                    ? pinx::i18n::tr("queue.inst_done")
+                    : pinx::i18n::tr("queue.inst_done_warn") + inst.warning;
                 if(!inst.display_name.empty()) display_name_ = inst.display_name;
             }
             break;
@@ -200,8 +204,10 @@ void QueueTab::UpdateElements() {
     progress_bar_->SetProgress(static_cast<double>(progress_));
 
     {
-        const pu::ui::Color clr = (phase_ == Phase::Done)   ? kSuccess :
-                                   (phase_ == Phase::Failed) ? kError   : kTextMuted;
+        const pu::ui::Color clr =
+            (phase_ == Phase::Done && has_warning_) ? kWarning :
+            (phase_ == Phase::Done)                 ? kSuccess :
+            (phase_ == Phase::Failed)               ? kError   : kTextMuted;
         const auto cur = status_text_elm_->GetColor();
         if(cur.r != clr.r || cur.g != clr.g || cur.b != clr.b || cur.a != clr.a)
             status_text_elm_->SetColor(clr);

@@ -25,6 +25,7 @@ class ContentStorage {
                               const void *data, std::size_t length);
         bool Register(const NcmContentId &placeholder_id, const NcmContentId &content_id);
         bool Delete(const NcmContentId &id);
+        void CleanupPlaceholders();
 
     private:
         NcmContentStorage storage_{};
@@ -56,6 +57,9 @@ bool IsTitleInstalled(std::uint64_t title_id);
 bool PushApplicationRecord(std::uint64_t base_title_id,
                            NcmStorageId storage_id,
                            const NcmContentMetaKey &key);
+
+// Drops placeholders left behind by installs that died before finishing.
+void CleanupStalePlaceholders();
 
 bool ImportTicket(const void *tik_data, std::size_t tik_size,
                   const void *cert_data, std::size_t cert_size);

@@ -23,24 +23,6 @@ static constexpr std::uint64_t kNczBlockMagic   = 0x4B434F4C425A434EULL;
 static constexpr std::size_t   kNczModernPrefix  = 0x4000;
 static constexpr std::size_t   kNczLegacyPrefix  = 0xC00;
 
-bool IsCompressedNca(const std::string &container_path, std::uint64_t nca_offset);
-
-std::string DecompressNczToTemp(const std::string &container_path,
-                                 std::uint64_t nca_offset,
-                                 std::uint64_t compressed_size,
-                                 const std::string &temp_dir,
-                                 NczProgressCallback progress_callback = {},
-                                 NczStopCallback stop_callback = {});
-
-bool DecompressNczToStorage(const std::string &container_path,
-                             std::uint64_t nca_offset,
-                             std::uint64_t compressed_size,
-                             ContentStorage &storage,
-                             const NcmContentId &nca_id,
-                             const HeaderKey &header_key,
-                             NczProgressCallback progress_callback = {},
-                             NczStopCallback stop_callback = {});
-
 bool DecompressNczFromRangeReaderToStorage(
     const NczRangeReader &reader,
     std::uint64_t entry_offset,

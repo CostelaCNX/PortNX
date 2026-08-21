@@ -1,5 +1,6 @@
 #include <switch.h>
 #include <install/es_ipc.h>
+#include <install/NcmWrapper.hpp>
 #include <install/ns_ext_ipc.h>
 #include <ui/MainApplication.hpp>
 
@@ -11,6 +12,8 @@ int main(int, char *[]) {
     esInitialize();
     nsInitialize();
     nsextInitialize();
+
+    pinx::install::CleanupStalePlaceholders();
 
     auto renderer_opts = pu::ui::render::RendererInitOptions(SDL_INIT_EVERYTHING,
                              pu::ui::render::RendererHardwareFlags);

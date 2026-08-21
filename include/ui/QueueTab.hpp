@@ -37,6 +37,7 @@ class QueueTab {
 
         std::string              display_name_;
         float                    progress_     = 0.0f;
+        bool                     has_warning_  = false;
         std::string              status_text_;
         std::vector<std::string> queue_names_;
         std::vector<std::string> completed_names_;

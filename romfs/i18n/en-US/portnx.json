@@ -26,6 +26,7 @@
         "all_done":       "All done.",
         "dl_done":        "Download complete — saved to SD.",
         "inst_done":      "Installed successfully.",
+        "inst_done_warn": "Installed, but: ",
         "failed":         "Failed: ",
         "downloading":    "Downloading...",
         "installing":     "Installing...",
