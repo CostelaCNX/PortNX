@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.0] — 2026-08-21
+
+Reliability release for stream installs on unstable connections.
+
+### Fixed
+- Installs now retry and resume from the last written offset when the connection drops, instead of failing the whole package. Previously only NSZ recovered from a network blip; plain NSP restarted from zero and lost all progress.
+- A transfer that reports success but delivers a short body is retried instead of being accepted as complete.
+- Running out of SD card space now reports how much is needed and how much is free, instead of a generic install error.
+- Tickets are no longer skipped when a package ships fewer certificates than tickets. Every ticket is attempted, and one that cannot be imported is reported in the queue instead of failing silently.
+- Content metadata is written only after every file is registered, so an interrupted install no longer leaves an orphan record behind.
+- Leftover placeholders from installs interrupted by a crash or shutdown are cleared at startup, reclaiming SD card space.
+
 ## [2.0.1] — 2026-07-27
 
 Maintenance release focused on installation reliability and large remote packages.

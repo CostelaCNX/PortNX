@@ -17,7 +17,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 APP_TITLE   := PortNX
 APP_AUTHOR  := CostelaBR
-APP_VERSION := 2.0.1
+APP_VERSION := 2.1.0
 TARGET      := PortNX
 APP_ICON    := $(CURDIR)/icon.jpg
 
