@@ -236,6 +236,10 @@ bool DecompressNczFromRangeReaderToStorage(
                                 && (blk_hdr.block_size_exponent >= 14)
                                 && (blk_hdr.block_size_exponent <= 24);
 
+    // Clear any prior full registration under this ID before creating the
+    // placeholder, so Register() below writes fresh bytes instead of no-opping
+    // against stale content from an earlier attempt.
+    storage.Delete(nca_id);
     storage.DeletePlaceholder(nca_id);
     if(!storage.CreatePlaceholder(nca_id, nca_size)) return false;
 
@@ -370,7 +374,11 @@ bool DecompressNczFromRangeReaderToStorage(
         storage.Delete(nca_id);
         return false;
     }
-    storage.Register(nca_id, nca_id);
+    if(!storage.Register(nca_id, nca_id)) {
+        storage.DeletePlaceholder(nca_id);
+        storage.Delete(nca_id);
+        return false;
+    }
     storage.DeletePlaceholder(nca_id);
     if(progress_callback) progress_callback(entry_size, entry_size);
     return true;

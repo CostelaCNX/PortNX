@@ -1,3 +1,8 @@
+// switch.h first: it wraps the libnx C headers in extern "C", and ncm_types.h
+// (pulled in transitively below) includes crypto/sha256.h without that guard —
+// so anything reaching sha256.h before switch.h gets C++-mangled symbols.
+#include <switch.h>
+
 #include <install/StreamInstallEngine.hpp>
 #include <install/ContentMeta.hpp>
 #include <install/CryptoUtils.hpp>
@@ -8,12 +13,11 @@
 #include <net/HttpClient.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <memory>
 #include <thread>
 #include <vector>
-
-#include <switch.h>
 
 namespace pinx::install {
 namespace {
@@ -94,6 +98,18 @@ bool RangeRead(const StreamInstallRequest &req, std::uint64_t offset, std::uint6
     }, {});
     if(!r.success && out_error) *out_error = r.error;
     return r.success;
+}
+
+// Packages name their NCAs after the content ID in hex, but nothing fixes the
+// case: repacks use upper, lower or mixed. Parsing to the binary ID makes every
+// lookup case-agnostic by construction instead of relying on string compares.
+bool ParseNcaId(const std::string &name, NcmContentId &out) {
+    if(name.size() < 32) return false;
+    for(std::size_t i = 0; i < 32; i++) {
+        if(!std::isxdigit(static_cast<unsigned char>(name[i]))) return false;
+    }
+    out = NcaIdFromString(name.substr(0, 32));
+    return true;
 }
 
 bool IsNczName(const std::string &name) {
@@ -273,6 +289,8 @@ bool StreamPlainNcaToStorage(const StreamInstallRequest &req,
                               std::uint32_t nca_index,
                               std::uint32_t nca_count,
                               const std::string &nca_name) {
+    if(nca_file_size < kNcaHeaderSize) return false;
+
     std::vector<std::uint8_t> hdr_buf(kNcaHeaderSize, 0);
     {
         const std::uint64_t fetch = std::min<std::uint64_t>(kNcaHeaderSize, nca_file_size);
@@ -285,6 +303,14 @@ bool StreamPlainNcaToStorage(const StreamInstallRequest &req,
             }, opts);
         if(!r.success || recv < static_cast<std::size_t>(fetch)) return false;
     }
+
+    // An NCA's content ID is the first 16 bytes of the SHA-256 of the original
+    // file, so hash the bytes as they stream in and confirm the match before
+    // registering. This is fed from the unmodified header and body, not from
+    // what lands in the placeholder (the header may be normalized below).
+    Sha256Context sha{};
+    sha256ContextCreate(&sha);
+    sha256ContextUpdate(&sha, hdr_buf.data(), hdr_buf.size());
 
     std::uint64_t nca_size = nca_file_size;
     if(header_key && nca_file_size >= kNcaHeaderSize) {
@@ -302,6 +328,11 @@ bool StreamPlainNcaToStorage(const StreamInstallRequest &req,
         }
     }
 
+    // Delete() first, not just DeletePlaceholder(): if this content ID was
+    // already fully registered by an earlier attempt (possibly corrupt or
+    // incomplete), leaving it registered makes Register() below a silent no-op
+    // against stale data instead of writing the fresh bytes.
+    storage.Delete(nca_id);
     storage.DeletePlaceholder(nca_id);
     if(!storage.CreatePlaceholder(nca_id, nca_size)) return false;
     if(!storage.WritePlaceholder(nca_id, 0, hdr_buf.data(), hdr_buf.size())) {
@@ -325,6 +356,7 @@ bool StreamPlainNcaToStorage(const StreamInstallRequest &req,
 
         auto flush = [&]() -> bool {
             if(wbuf.empty()) return true;
+            sha256ContextUpdate(&sha, wbuf.data(), wbuf.size());
             if(!storage.WritePlaceholder(nca_id, written + body_written,
                                           wbuf.data(), wbuf.size())) {
                 storage_failed = true;
@@ -379,7 +411,22 @@ bool StreamPlainNcaToStorage(const StreamInstallRequest &req,
     }
 
     if(!ok || written != nca_size) { storage.DeletePlaceholder(nca_id); return false; }
-    storage.Register(nca_id, nca_id);
+
+    std::uint8_t digest[SHA256_HASH_SIZE]{};
+    sha256ContextGetHash(&sha, digest);
+    if(std::memcmp(digest, &nca_id, sizeof(nca_id)) != 0) {
+        storage.DeletePlaceholder(nca_id);
+        return false;
+    }
+
+    // A duplicate-registration failure (stale content still registered under
+    // this ID) leaves the OLD bytes as what actually launches while this
+    // function reports success. The Delete() above should prevent it, but a
+    // failed Register() must still fail the NCA so the cleanup path runs.
+    if(!storage.Register(nca_id, nca_id)) {
+        storage.DeletePlaceholder(nca_id);
+        return false;
+    }
     storage.DeletePlaceholder(nca_id);
     if(progress) progress(InstallProgress{nca_size, nca_size, nca_name, nca_index, nca_count, false});
     return true;
@@ -465,9 +512,8 @@ InstallResult InstallRemoteEntries(const StreamInstallRequest &req,
         const bool is_cnmt = lo.size() > 9 && (
             lo.substr(lo.size() - 9) == ".cnmt.nca" ||
             lo.substr(lo.size() - 9) == ".cnmt.ncz");
-        if(!is_cnmt || e.name.size() < 32) continue;
-
-        const NcmContentId cnmt_id = NcaIdFromString(e.name.substr(0, 32));
+        NcmContentId cnmt_id{};
+        if(!is_cnmt || !ParseNcaId(e.name, cnmt_id)) continue;
         if(!storage.Has(cnmt_id) || req.install_config.reinstall_ncas) {
             bool ok = false;
             if(IsNczName(e.name) && hk) {
@@ -516,7 +562,11 @@ InstallResult InstallRemoteEntries(const StreamInstallRequest &req,
         const std::string id_hex = NcaIdToString(info.content_id);
         const RemoteEntry *entry = nullptr;
         for(const auto &e : entries) {
-            if(e.name.size() >= 32 && e.name.substr(0, 32) == id_hex) { entry = &e; break; }
+            NcmContentId id{};
+            if(ParseNcaId(e.name, id) && std::memcmp(&id, &info.content_id, sizeof(id)) == 0) {
+                entry = &e;
+                break;
+            }
         }
         if(!entry) { result.error_message = "Missing NCA: " + id_hex; return result; }
 
