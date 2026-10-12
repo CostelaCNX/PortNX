@@ -146,9 +146,31 @@ void MainLayout::BuildTabs() {
         RefreshStrings();
     });
 
+    details_ = std::make_unique<DetailsTab>();
+    browse_->SetOnShowDetails([this](const BrowseTab::GridEntry &entry) {
+        ShowDetails(entry);
+    });
+
     browse_->AddElementsTo(this);
     queue_->AddElementsTo(this);
     settings_->AddElementsTo(this);
+    details_->AddElementsTo(this);
+}
+
+void MainLayout::ShowDetails(const BrowseTab::GridEntry &entry) {
+    browse_->Hide();
+    details_->Show(entry, browse_->IsQueued(entry.url));
+}
+
+void MainLayout::HideDetails() {
+    details_->Hide();
+    browse_->Show();
+}
+
+void MainLayout::QueueFromDetails() {
+    if (!details_->CanQueue()) return;
+    browse_->Enqueue(details_->Entry());
+    HideDetails();
 }
 
 void MainLayout::RefreshStrings() {
@@ -156,6 +178,7 @@ void MainLayout::RefreshStrings() {
     browse_->RefreshStrings();
     queue_->RefreshStrings();
     settings_->RefreshStrings();
+    details_->RefreshStrings();
     if (!home_mode_)
         content_title_->SetText(pinx::i18n::tr(kTabKeys[static_cast<u8>(current_tab_)]));
 }
@@ -179,6 +202,7 @@ void MainLayout::ShowHome() {
     browse_->Hide();
     queue_->Hide();
     settings_->Hide();
+    details_->Hide();
 
     UpdateCardColors();
 }
@@ -204,6 +228,7 @@ void MainLayout::EnterTab(Tab t) {
     browse_->Hide();
     queue_->Hide();
     settings_->Hide();
+    details_->Hide();
     switch (t) {
         case Tab::Browse:   browse_->Show();   break;
         case Tab::Queue:    queue_->Show();    break;
@@ -216,6 +241,7 @@ void MainLayout::BackToHome() {
     browse_->Hide();
     queue_->Hide();
     settings_->Hide();
+    details_->Hide();
     ShowHome();
 }
 
@@ -268,6 +294,21 @@ void MainLayout::OnInput(u64 kd, u64 /*ku*/, u64 /*kh*/, pu::ui::TouchPoint tp) 
             }
         }
     } else {
+        if (details_->IsVisible()) {
+            if (kd & HidNpadButton_B) {
+                HideDetails();
+            } else if (kd & HidNpadButton_A) {
+                QueueFromDetails();
+            } else if (!tp.IsEmpty()) {
+                if (details_->HitsAction(tp)) QueueFromDetails();
+                else if (tp.HitsRegion(0, 0, kW, kTopBarH)) HideDetails();
+            }
+            browse_->Poll();
+            queue_->Poll();
+            settings_->Poll();
+            return;
+        }
+
         if (current_tab_ == Tab::Browse) {
             if (browse_->HandleInput(kd)) {
                 browse_->Poll();

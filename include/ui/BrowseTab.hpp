@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -65,8 +66,16 @@ class BrowseTab {
             bool is_directory   = false;
             bool is_back        = false;
             std::string meta_line;
+            std::string description, notes, publisher, region, genre, ported_from;
+            std::uint64_t release_date = 0;
             pu::sdl2::TextureHandle::Ref icon_tex; // null until loaded
         };
+
+        void SetOnShowDetails(std::function<void(const GridEntry &)> cb) {
+            on_show_details_ = std::move(cb);
+        }
+        void Enqueue(const GridEntry &e);
+        bool IsQueued(const std::string &url) const { return queued_urls_.count(url) > 0; }
 
         enum class ViewMode { Grid, List };
 
@@ -76,6 +85,7 @@ class BrowseTab {
         pinx::install::InstallManager   *installer;
         std::vector<std::string>         nav_stack;
         bool                             visible_ = false;
+        std::function<void(const GridEntry &)> on_show_details_;
 
         bool pending_initial_load_ = false;
 

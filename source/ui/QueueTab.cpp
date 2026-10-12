@@ -1,4 +1,5 @@
 #include <ui/QueueTab.hpp>
+#include <app/Format.hpp>
 #include <app/I18n.hpp>
 
 #include <algorithm>
@@ -22,17 +23,7 @@ static constexpr pu::ui::Color kSuccess     = {  63, 185, 80,  255 };
 static constexpr pu::ui::Color kError       = { 248,  81,  73, 255 };
 static constexpr pu::ui::Color kWarning     = { 210, 153,  34, 255 };
 
-std::string HumanSize(std::uint64_t bytes) {
-    const char *units[] = {"B", "KB", "MB", "GB"};
-    double v = static_cast<double>(bytes);
-    int u = 0;
-    while(v >= 1024.0 && u < 3) { v /= 1024.0; ++u; }
-    char buf[32];
-    if(u == 0) std::snprintf(buf, sizeof(buf), "%llu B",
-                              static_cast<unsigned long long>(bytes));
-    else        std::snprintf(buf, sizeof(buf), "%.1f %s", v, units[u]);
-    return buf;
-}
+using pinx::app::HumanSize;
 
 }
 

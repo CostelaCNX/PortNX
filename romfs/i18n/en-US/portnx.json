@@ -45,6 +45,14 @@
         "lang_en":          "English",
         "lang_ptbr":        "Português (BR)"
     },
+    "details": {
+        "install":        "Install",
+        "download":       "Download",
+        "queued":         "Already in queue",
+        "ported_from":    "Ported from {0}",
+        "no_description": "No description available.",
+        "notes":          "Notes"
+    },
     "hints": {
         "navigate":   "Navigate",
         "open":       "Open",

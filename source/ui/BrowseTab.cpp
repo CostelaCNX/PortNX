@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <sys/stat.h>
 
+#include <app/Format.hpp>
 #include <app/I18n.hpp>
 #include <catalog/IndexParser.hpp>
 #include <catalog/TinfoilDecryptor.hpp>
@@ -59,18 +60,7 @@ void saveIconToDisk(const std::string &url, const std::vector<uint8_t> &data) {
     fclose(f);
 }
 
-std::string HumanSize(std::uint64_t bytes) {
-    const char *units[] = {"B", "KB", "MB", "GB", "TB"};
-    double value = static_cast<double>(bytes);
-    int unit = 0;
-    while (value >= 1024.0 && unit < 4) { value /= 1024.0; ++unit; }
-    char buf[32];
-    if (unit == 0)
-        std::snprintf(buf, sizeof(buf), "%llu B", static_cast<unsigned long long>(bytes));
-    else
-        std::snprintf(buf, sizeof(buf), "%.1f %s", value, units[unit]);
-    return buf;
-}
+using pinx::app::HumanSize;
 
 struct IconThreadArgs {
     std::shared_ptr<BrowseTab::IconState> state;
@@ -409,6 +399,13 @@ void BrowseTab::tickFetch() {
         e.title_id  = item.title_id;
         e.size_authoritative = item.size_authoritative;
         e.is_directory = (item.kind == pinx::catalog::EntryKind::Directory);
+        e.description  = item.description;
+        e.notes        = item.notes;
+        e.publisher    = item.publisher;
+        e.region       = item.region;
+        e.genre        = item.genre;
+        e.ported_from  = item.ported_from;
+        e.release_date = item.release_date;
 
         if (!e.is_directory) {
             std::string lower = e.filename;
@@ -704,7 +701,15 @@ void BrowseTab::ActivateSelected() {
         startFetch(e.url, true);
         return;
     }
-    if (queued_urls_.count(e.url)) return; // duplicate prevention
+    if (on_show_details_) {
+        on_show_details_(e);
+        return;
+    }
+    Enqueue(e);
+}
+
+void BrowseTab::Enqueue(const GridEntry &e) {
+    if (queued_urls_.count(e.url)) return;
 
     if (e.is_installable) {
         pinx::install::InstallManager::StreamRequest req;

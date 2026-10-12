@@ -22,6 +22,14 @@ struct CatalogItem {
     std::string   sha256;          // optional lowercase hex integrity hash
     std::string   icon_url;        // optional cover art URL (rendered later)
     std::uint64_t title_id = 0;   // 0 = unknown; set when filename is a 16-hex TID
+
+    std::string   description;
+    std::string   notes;
+    std::string   publisher;
+    std::string   region;
+    std::string   genre;
+    std::string   ported_from;
+    std::uint64_t release_date = 0; // YYYYMMDD, 0 = unknown
 };
 
 }

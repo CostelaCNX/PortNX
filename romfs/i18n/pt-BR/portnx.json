@@ -45,6 +45,14 @@
         "lang_en":          "English",
         "lang_ptbr":        "Português (BR)"
     },
+    "details": {
+        "install":        "Instalar",
+        "download":       "Baixar",
+        "queued":         "Já está na fila",
+        "ported_from":    "Portado de {0}",
+        "no_description": "Sem descrição disponível.",
+        "notes":          "Observações"
+    },
     "hints": {
         "navigate":   "Navegar",
         "open":       "Abrir",

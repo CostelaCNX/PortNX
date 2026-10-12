@@ -6,6 +6,7 @@
 #include <pu/Plutonium>
 
 #include <ui/BrowseTab.hpp>
+#include <ui/DetailsTab.hpp>
 #include <ui/QueueTab.hpp>
 #include <ui/SettingsTab.hpp>
 
@@ -54,6 +55,7 @@ private:
     std::unique_ptr<BrowseTab>   browse_;
     std::unique_ptr<QueueTab>    queue_;
     std::unique_ptr<SettingsTab> settings_;
+    std::unique_ptr<DetailsTab>  details_;
 
     void BuildHome();
     void BuildContentHeader();
@@ -61,6 +63,9 @@ private:
     void ShowHome();
     void EnterTab(Tab t);
     void BackToHome();
+    void ShowDetails(const BrowseTab::GridEntry &entry);
+    void HideDetails();
+    void QueueFromDetails();
     void UpdateCardColors();
     void RefreshHints();  // rebuild hint bar text + label positions from current i18n
     void RefreshStrings(); // re-init i18n and push new strings to all UI elements

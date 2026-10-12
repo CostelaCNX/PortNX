@@ -86,6 +86,13 @@ struct TitleMeta {
     std::uint64_t size = 0;
     std::string   version;
     std::string   icon_url;
+    std::string   description;
+    std::string   notes;
+    std::string   publisher;
+    std::string   region;
+    std::string   genre;
+    std::string   ported_from;
+    std::uint64_t release_date = 0;
 };
 
 std::uint64_t AsUint(const json &j) {
@@ -97,6 +104,36 @@ std::uint64_t AsUint(const json &j) {
         return v > 0 ? static_cast<std::uint64_t>(v) : 0;
     }
     return 0;
+}
+
+std::string StringField(const json &v, const char *key) {
+    return (v.contains(key) && v[key].is_string()) ? v[key].get<std::string>() : std::string();
+}
+
+std::uint64_t DateField(const json &v, const char *key) {
+    if(!v.contains(key)) return 0;
+    if(v[key].is_string()) {
+        std::string digits;
+        for(char c : v[key].get<std::string>()) {
+            if(std::isdigit(static_cast<unsigned char>(c))) digits += c;
+        }
+        if(digits.size() != 8) return 0;
+        try { return std::stoull(digits); } catch(...) { return 0; }
+    }
+    return AsUint(v[key]);
+}
+
+// Accepts either a plain "genre" string or a "category" array, the shape most
+// titledb exports use.
+std::string GenreField(const json &v) {
+    std::string genre = StringField(v, "genre");
+    if(!genre.empty() || !v.contains("category") || !v["category"].is_array()) return genre;
+    for(const auto &c : v["category"]) {
+        if(!c.is_string()) continue;
+        if(!genre.empty()) genre += ", ";
+        genre += c.get<std::string>();
+    }
+    return genre;
 }
 
 std::unordered_map<std::string, TitleMeta> ParseTitledb(const json &j) {
@@ -130,6 +167,13 @@ std::unordered_map<std::string, TitleMeta> ParseTitledb(const json &j) {
         if(v.contains("iconUrl") && v["iconUrl"].is_string()) {
             m.icon_url = v["iconUrl"].get<std::string>();
         }
+        m.description  = StringField(v, "description");
+        m.notes        = StringField(v, "notes");
+        m.publisher    = StringField(v, "publisher");
+        m.region       = StringField(v, "region");
+        m.ported_from  = StringField(v, "portedFrom");
+        m.genre        = GenreField(v);
+        m.release_date = DateField(v, "releaseDate");
         db.emplace(ToUpper(it.key()), std::move(m));
     }
     return db;
@@ -233,7 +277,14 @@ ParseResult ParseIndex(const std::string &body, const std::string &base_url) {
                     if(it.name.empty())    it.name     = m.name;
                     if(it.size == 0)       it.size     = m.size;
                     if(it.version.empty()) it.version  = m.version;
-                    it.icon_url = m.icon_url;
+                    it.icon_url     = m.icon_url;
+                    it.description  = m.description;
+                    it.notes        = m.notes;
+                    it.publisher    = m.publisher;
+                    it.region       = m.region;
+                    it.genre        = m.genre;
+                    it.ported_from  = m.ported_from;
+                    it.release_date = m.release_date;
                 }
             }
             for(const char *k : {"tid", "title_id", "titleId"}) {
