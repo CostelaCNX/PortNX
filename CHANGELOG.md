@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.0] — 2026-10-12
+
+### Added
+- Details screen before queueing a port: cover, genre, origin platform, publisher, region, release date, version, size, description and notes, read from the catalog's titledb section. A installs or downloads, B returns to the list, and ports already in the queue are marked as such.
+
+### Fixed
+- NCA lookup inside a package no longer depends on letter case, so repacks that name their files in uppercase or mixed case install correctly.
+- Each NCA is verified against its content ID (SHA-256) before registration, catching corrupted transfers instead of installing them.
+- An NCA left registered by an earlier failed attempt is replaced instead of silently kept, and a failed registration now fails the install instead of reporting success.
+
 ## [2.1.0] — 2026-08-21
 
 Reliability release for stream installs on unstable connections.
